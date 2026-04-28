@@ -1,0 +1,55 @@
+{
+  "app": {
+    "title": "JOTO 内容工厂",
+    "subtitle": "企业级合规 AI 公众号内容生产平台"
+  },
+  "nav": {
+    "articles": "文章",
+    "products": "产品",
+    "accounts": "账号",
+    "search": "搜索文章、产品",
+    "newArticle": "新建文章"
+  },
+  "dashboard": {
+    "greeting": "欢迎回来",
+    "heroSubtitle": "合规 · 专业 · 稳定 · 安全",
+    "kpi": {
+      "monthlyGenerated": "本月生成",
+      "published": "已发布",
+      "avgAiScore": "平均 AI 浓度",
+      "avgReaders": "平均阅读"
+    },
+    "table": {
+      "title": "历史文章",
+      "empty": "还没有文章，点「新建文章」开始"
+    }
+  },
+  "wizard": {
+    "step1Title": "第一步 · 选产品",
+    "step2Title": "第二步 · 选角度",
+    "step3Title": "第三步 · 选风格",
+    "generating": "正在生成文章，请稍候…",
+    "next": "下一步",
+    "prev": "上一步",
+    "generate": "开始生成"
+  },
+  "editor": {
+    "aiScore": "AI 浓度",
+    "compliance": "合规检查",
+    "rewrite": "重写",
+    "expand": "扩写",
+    "shorten": "缩写",
+    "conversational": "更口语",
+    "addData": "加数据"
+  },
+  "review": {
+    "pickAccount": "选择发布到哪个账号",
+    "preview": "最终预览",
+    "checklist": "合规清单",
+    "declaration": "确认声明",
+    "agree": "我已完整阅读全文 · 对内容真实性负责",
+    "addAigcNotice": "在文末添加「本文由 AI 辅助创作」声明",
+    "publish": "确认发布到",
+    "backToEdit": "返回继续编辑"
+  }
+}

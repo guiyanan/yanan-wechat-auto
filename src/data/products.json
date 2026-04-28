@@ -1,0 +1,99 @@
+[
+  {
+    "id": "prod-loop",
+    "name": "Loop RPA",
+    "description": "浏览器原生 Agent，替代传统 RPA 的部署链路",
+    "website": "https://loop.example.com",
+    "tags": ["RPA", "Agent", "自动化"],
+    "iconGradient": ["#6366f1", "#ec4899"],
+    "knowledgeDocs": [
+      {
+        "id": "doc-loop-1",
+        "fileName": "Loop 产品白皮书 v2.3.pdf",
+        "fileType": "pdf",
+        "sizeKb": 2048,
+        "ragStatus": "indexed"
+      },
+      {
+        "id": "doc-loop-2",
+        "fileName": "Loop 功能对比.md",
+        "fileType": "markdown",
+        "sizeKb": 36,
+        "ragStatus": "indexed"
+      }
+    ]
+  },
+  {
+    "id": "prod-nova",
+    "name": "Nova CRM",
+    "description": "面向中型 B2B 企业的客户关系管理平台",
+    "website": "https://nova.example.com",
+    "tags": ["CRM", "B2B", "销售"],
+    "iconGradient": ["#0ea5e9", "#10b981"],
+    "knowledgeDocs": [
+      {
+        "id": "doc-nova-1",
+        "fileName": "Nova 销售流程手册.docx",
+        "fileType": "word",
+        "sizeKb": 512,
+        "ragStatus": "indexed"
+      }
+    ]
+  },
+  {
+    "id": "prod-atlas",
+    "name": "Atlas 数据平台",
+    "description": "一站式企业数据仓库 + BI 自助分析",
+    "website": "https://atlas.example.com",
+    "tags": ["数据", "BI", "仓库"],
+    "iconGradient": ["#f59e0b", "#ef4444"],
+    "knowledgeDocs": [
+      {
+        "id": "doc-atlas-1",
+        "fileName": "Atlas 架构白皮书.pdf",
+        "fileType": "pdf",
+        "sizeKb": 3100,
+        "ragStatus": "indexed"
+      },
+      {
+        "id": "doc-atlas-2",
+        "fileName": "Atlas 2025 Q4 更新说明.md",
+        "fileType": "markdown",
+        "sizeKb": 18,
+        "ragStatus": "indexing"
+      }
+    ]
+  },
+  {
+    "id": "prod-forge",
+    "name": "Forge DevOps",
+    "description": "云原生 CI/CD 与制品管理一体化平台",
+    "tags": ["DevOps", "CI/CD", "云原生"],
+    "iconGradient": ["#8b5cf6", "#06b6d4"],
+    "knowledgeDocs": []
+  },
+  {
+    "id": "prod-lumen",
+    "name": "Lumen 营销云",
+    "description": "私域运营自动化 + SCRM",
+    "tags": ["营销", "私域", "SCRM"],
+    "iconGradient": ["#ec4899", "#f97316"],
+    "knowledgeDocs": [
+      {
+        "id": "doc-lumen-1",
+        "fileName": "Lumen 客户案例合集.xlsx",
+        "fileType": "excel",
+        "sizeKb": 720,
+        "ragStatus": "indexed"
+      }
+    ]
+  },
+  {
+    "id": "prod-vault",
+    "name": "Vault 企业安全",
+    "description": "零信任访问控制 + 密钥管理",
+    "tags": ["安全", "零信任", "KMS"],
+    "iconGradient": ["#14b8a6", "#6366f1"],
+    "knowledgeDocs": []
+  }
+]

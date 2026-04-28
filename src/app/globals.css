@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* ---- Editor · compliance highlights (decorations) ---- */
+.joto-hl-limit {
+  background-color: rgba(220, 38, 38, 0.12);
+  border-bottom: 2px solid rgba(220, 38, 38, 0.55);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.joto-hl-sensitive {
+  background-color: rgba(245, 158, 11, 0.14);
+  border-bottom: 2px dashed rgba(245, 158, 11, 0.75);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Editor typography (we don't ship @tailwindcss/typography;
+   prose utility classes are no-ops — style TipTap content directly). */
+.joto-editor .ProseMirror h1 {
+  font-size: 1.75rem;
+  line-height: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 1.1rem 0 0.6rem;
+  color: #0f172a;
+}
+.joto-editor .ProseMirror h2 {
+  font-size: 1.35rem;
+  line-height: 1.85rem;
+  font-weight: 600;
+  margin: 1rem 0 0.4rem;
+  color: #0f172a;
+}
+.joto-editor .ProseMirror h3 {
+  font-size: 1.1rem;
+  line-height: 1.6rem;
+  font-weight: 600;
+  margin: 0.9rem 0 0.3rem;
+  color: #1e293b;
+}
+.joto-editor .ProseMirror p {
+  line-height: 1.9;
+  color: #1e293b;
+  margin: 0.55rem 0;
+  font-size: 0.975rem;
+}
+.joto-editor .ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0.55rem 0;
+}
+.joto-editor .ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin: 0.55rem 0;
+}
+.joto-editor .ProseMirror blockquote {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 1rem;
+  color: #475569;
+  margin: 0.8rem 0;
+}
+.joto-editor .ProseMirror strong {
+  font-weight: 600;
+}
+
+/* TipTap placeholder styling */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #94a3b8;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Lock editor focus ring off — we use border on container */
+.ProseMirror:focus,
+.ProseMirror:focus-visible {
+  outline: none;
+}

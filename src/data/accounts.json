@@ -1,0 +1,42 @@
+[
+  {
+    "id": "acct-joto-official",
+    "name": "JOTO 官方",
+    "type": "服务号",
+    "audience": "企业市场部、CIO",
+    "tonality": "专业 · 克制",
+    "avgReaders": 8420,
+    "avatarGradient": ["#2563eb", "#0ea5e9"],
+    "lastPostedAt": "2026-04-12T09:00:00+08:00"
+  },
+  {
+    "id": "acct-joto-tech",
+    "name": "JOTO 技术观察",
+    "type": "订阅号",
+    "audience": "工程师、架构师",
+    "tonality": "硬核 · 数据驱动",
+    "avgReaders": 3210,
+    "avatarGradient": ["#6366f1", "#8b5cf6"],
+    "lastPostedAt": "2026-04-15T18:30:00+08:00"
+  },
+  {
+    "id": "acct-joto-stories",
+    "name": "JOTO 客户故事",
+    "type": "订阅号",
+    "audience": "潜客、业务负责人",
+    "tonality": "叙事 · 温度",
+    "avgReaders": 5130,
+    "avatarGradient": ["#ec4899", "#f97316"],
+    "lastPostedAt": "2026-04-08T11:20:00+08:00"
+  },
+  {
+    "id": "acct-joto-weekly",
+    "name": "JOTO 周报",
+    "type": "订阅号",
+    "audience": "行业关注者",
+    "tonality": "轻量 · 聚合",
+    "avgReaders": 2080,
+    "avatarGradient": ["#10b981", "#14b8a6"],
+    "lastPostedAt": "2026-04-14T20:00:00+08:00"
+  }
+]
