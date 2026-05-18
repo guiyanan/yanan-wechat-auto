@@ -144,4 +144,76 @@ describe("articleStore", () => {
     expect(list[0].id).toBe(d.id);
     expect(list[0].title).toBe("newest");
   });
+
+  // ─── batchId + stage (batch preview flow) ────────────────────────
+
+  it("createDraft accepts batchId + stage and persists both", () => {
+    const a = useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+      batchId: "batch-abc-123",
+      stage: "batch",
+    });
+    expect(a.batchId).toBe("batch-abc-123");
+    expect(a.stage).toBe("batch");
+    expect(useArticleStore.getState().drafts[a.id].batchId).toBe("batch-abc-123");
+  });
+
+  it("createDraft without batchId/stage leaves both undefined (backward compat)", () => {
+    const a = useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+    });
+    expect(a.batchId).toBeUndefined();
+    expect(a.stage).toBeUndefined();
+  });
+
+  it("listByBatch returns only articles matching the given batchId", () => {
+    const batch1 = "batch-A";
+    const batch2 = "batch-B";
+    useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+      batchId: batch1,
+      stage: "batch",
+    });
+    useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+      batchId: batch1,
+      stage: "batch",
+    });
+    useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+      batchId: batch2,
+      stage: "batch",
+    });
+    // Decoy: a draft with no batchId
+    useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+    });
+
+    const matches = useArticleStore.getState().listByBatch(batch1);
+    expect(matches).toHaveLength(2);
+    expect(matches.every((a) => a.batchId === batch1)).toBe(true);
+  });
+
+  it("listByBatch returns empty array for unknown batchId", () => {
+    expect(useArticleStore.getState().listByBatch("batch-nonexistent")).toEqual([]);
+  });
+
+  it("patch can promote an article from stage=batch to stage=main", () => {
+    const a = useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+      batchId: "batch-X",
+      stage: "batch",
+    });
+    useArticleStore.getState().patch(a.id, { stage: "main" });
+    expect(useArticleStore.getState().drafts[a.id].stage).toBe("main");
+    // batchId is preserved — article remains visible in batch preview as "已入库"
+    expect(useArticleStore.getState().drafts[a.id].batchId).toBe("batch-X");
+  });
 });

@@ -24,6 +24,16 @@ interface AiScoreGaugeProps {
   /** Target score the auto-loop tries to reach. */
   autoLoopTarget: number;
   disabled?: boolean;
+  /**
+   * L3 detectScore result (0–100). When provided, shown alongside the
+   * heuristic score so users can compare the two signals.
+   * undefined = not yet computed.
+   */
+  l3Score?: number;
+  /**
+   * L3 score from BEFORE the last pipeline run — used to show the delta.
+   */
+  l3ScoreBefore?: number;
 }
 
 export function AiScoreGauge({
@@ -40,6 +50,8 @@ export function AiScoreGauge({
   autoLoopMaxIters,
   autoLoopTarget,
   disabled,
+  l3Score,
+  l3ScoreBefore,
 }: AiScoreGaugeProps) {
   const meta = aiScoreMeta(score || 0);
   const pct = Math.max(0, Math.min(100, score || 0));
@@ -90,7 +102,51 @@ export function AiScoreGauge({
         />
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      {/* L3 pipeline score row */}
+      {l3Score !== undefined && (
+        <div className="mt-2 flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5">
+          <span className="text-[11px] text-slate-500">L3 检测评分</span>
+          <span className="flex items-center gap-1.5 text-xs font-medium tabular-nums">
+            {l3ScoreBefore !== undefined && l3ScoreBefore !== l3Score && (
+              <span className="text-slate-400 line-through">{l3ScoreBefore}</span>
+            )}
+            <span
+              className={cn(
+                l3Score <= 40 ? "text-emerald-600" : l3Score <= 65 ? "text-amber-600" : "text-red-600"
+              )}
+            >
+              {l3Score}
+            </span>
+            <span className="text-slate-400">/ 100</span>
+          </span>
+        </div>
+      )}
+
+      {/* Primary action: auto-pipeline (L1+L2+L3) */}
+      {autoLoopRunning ? (
+        <button
+          type="button"
+          onClick={onCancelAutoLoop}
+          className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 text-xs font-medium text-white shadow-sm transition-colors hover:bg-red-700"
+        >
+          <StopCircle className="h-3.5 w-3.5" aria-hidden="true" />
+          停止 · 第 {autoLoopIter} / {autoLoopMaxIters} 轮
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onAutoLoop}
+          disabled={otherDisabled}
+          className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 text-xs font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          title={`L1 Qwen 改写 + L2 后处理 + L3 评分门控，目标 < ${autoLoopTarget}`}
+        >
+          <Wand2 className="h-3.5 w-3.5" aria-hidden="true" />
+          一键降 AI（目标 &lt; {autoLoopTarget}）
+        </button>
+      )}
+
+      {/* Secondary actions row */}
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={onRefresh}
@@ -108,41 +164,19 @@ export function AiScoreGauge({
           type="button"
           onClick={onRunHumanize}
           disabled={otherDisabled}
-          className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 text-xs font-medium text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {humanizing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           ) : (
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           )}
-          再去一轮
+          单轮改写
         </button>
       </div>
 
-      {autoLoopRunning ? (
-        <button
-          type="button"
-          onClick={onCancelAutoLoop}
-          className="mt-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 text-xs font-medium text-white shadow-sm transition-colors hover:bg-red-700"
-        >
-          <StopCircle className="h-3.5 w-3.5" aria-hidden="true" />
-          停止 · 第 {autoLoopIter} / {autoLoopMaxIters} 轮
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={onAutoLoop}
-          disabled={otherDisabled}
-          className="mt-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 text-xs font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          title={`检测 → 改写 → 再检测,直到分数 < ${autoLoopTarget} 或满 ${autoLoopMaxIters} 轮`}
-        >
-          <Wand2 className="h-3.5 w-3.5" aria-hidden="true" />
-          自动改到安全区(目标 &lt; {autoLoopTarget})
-        </button>
-      )}
-
       <p className="mt-3 text-[11px] leading-4 text-slate-400">
-        本地启发式打分(套话/过渡词/句长方差/数字/第一人称/段落均衡六维加权);未接入外部检测 API。
+        启发式评分（六维加权）· L3 评分（4维 AI 痕迹检测）。&ldquo;一键降 AI&rdquo; 运行完整 L1+L2+L3 流水线。
       </p>
     </div>
   );

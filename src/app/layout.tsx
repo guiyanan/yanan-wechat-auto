@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,6 +16,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="zh-CN" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
         {children}
+        {/* Global toast surface — sonner's <Toaster> must be mounted once
+            at app root so every client component can call `toast()`.
+            (Previously only mounted in wizard/style/page.tsx, so toasts
+            in editor / batch / etc. silently dropped.) */}
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

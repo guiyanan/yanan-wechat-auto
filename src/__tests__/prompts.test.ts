@@ -273,4 +273,62 @@ describe("prompts · renderPrompt", () => {
     expect(out.system).toContain("句长均匀");
     expect(out.system).toContain("价值拔高");
   });
+
+  // ─── China-localization constraint ────────────────────────────────
+  // Published on WeChat Official Account (微信公众号) — all examples,
+  // companies, and memes must be Chinese; foreign references break tone
+  // and reduce reader trust.
+
+  it("body system requires concrete paragraphs under every ### subheading", () => {
+    // Without this, Qwen tends to compress all content into headings,
+    // leaving the article structure-rich but paragraph-poor — and the
+    // humanize step has nothing to rewrite.
+    const out = renderPrompt("body", {
+      product: "p",
+      productDesc: "d",
+      angle: "a",
+      angleInstruction: "i",
+      styleName: "s",
+      styleProfile: "p",
+      styleSample: "x",
+      outline: "## o",
+    });
+    expect(out.system).toMatch(/正文段落|展开段落|完整段落/);
+    // Explicit prohibition against packing content into headings
+    expect(out.system).toContain("禁止");
+  });
+
+  it("body system enforces China-only examples / companies / memes", () => {
+    const out = renderPrompt("body", {
+      product: "Loop RPA",
+      productDesc: "x",
+      angle: "产品推广",
+      angleInstruction: "y",
+      styleName: "JOTO",
+      styleProfile: "z",
+      styleSample: "s",
+      outline: "## o",
+    });
+    expect(out.system).toMatch(/中国本土化|中国本土/);
+    expect(out.system).toContain("不得使用中国以外");
+    // Positive examples invoked by name so the model knows what's OK
+    expect(out.system).toMatch(/阿里|腾讯|字节|美团|拼多多|京东|华为/);
+    // Anti-examples explicitly banned
+    expect(out.system).toMatch(/Google|Apple|Amazon|Tesla|OpenAI/);
+  });
+
+  it("humanize system enforces China-only examples across all branches", () => {
+    for (const articleType of ["产品推广", "场景推广", "峰会消息"] as const) {
+      const out = renderPrompt("humanize", {
+        intent: "x",
+        text: "y",
+        styleName: "s",
+        styleProfile: "p",
+        articleType,
+      });
+      expect(out.system).toMatch(/中国本土化|中国本土/);
+      expect(out.system).toContain("不得使用中国以外");
+      expect(out.system).toMatch(/阿里|腾讯|字节|美团|拼多多|京东|华为/);
+    }
+  });
 });

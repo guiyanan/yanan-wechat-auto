@@ -31,6 +31,17 @@ export interface ComplianceResult {
 
 import type { WechatTheme } from "@/lib/wechatThemes";
 
+/**
+ * Article lifecycle stage in the batch-preview flow.
+ *
+ *   "batch" — freshly generated, sitting in the batch preview page;
+ *             NOT shown in the main Dashboard until humanize promotes it.
+ *   "main"  — promoted (humanized) into the main Dashboard, or a legacy
+ *             article. `undefined` is treated as "main" for backward
+ *             compatibility with seed data and old drafts.
+ */
+export type ArticleStage = "batch" | "main";
+
 export interface Article {
   id: string;
   productId: string;
@@ -54,6 +65,14 @@ export interface Article {
   updatedAt: string;
   publishedAt?: string;
   readers?: number;
+  /**
+   * Batch ID grouping a single generation run's articles together.
+   * Same value across all N articles produced by one wizard run.
+   * Used by the batch preview page to list this run's outputs.
+   */
+  batchId?: string;
+  /** See `ArticleStage` JSDoc. */
+  stage?: ArticleStage;
 }
 
 export type PipelineStageId =

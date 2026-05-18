@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeKpis,
+  filterDashboardVisible,
   formatRelativeDate,
   getAllAccounts,
   getAllArticles,
@@ -121,3 +122,48 @@ function makeArticle(id: string, status: ArticleStatus = "draft"): Article {
     updatedAt: now,
   };
 }
+
+describe("articles · filterDashboardVisible", () => {
+  it("hides articles with stage='batch'", () => {
+    const batchArticle: Article = {
+      ...makeArticle("a-batch"),
+      stage: "batch",
+      batchId: "batch-1",
+    };
+    const mainArticle: Article = {
+      ...makeArticle("a-main"),
+      stage: "main",
+    };
+    const result = filterDashboardVisible([batchArticle, mainArticle]);
+    expect(result.map((a) => a.id)).toEqual(["a-main"]);
+  });
+
+  it("keeps articles with stage=undefined (backward compat for seed/legacy)", () => {
+    const legacyArticle = makeArticle("a-legacy");
+    expect(legacyArticle.stage).toBeUndefined();
+    const result = filterDashboardVisible([legacyArticle]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("a-legacy");
+  });
+
+  it("keeps articles with stage='main'", () => {
+    const mainArticle: Article = { ...makeArticle("a"), stage: "main" };
+    expect(filterDashboardVisible([mainArticle])).toHaveLength(1);
+  });
+
+  it("returns empty when all articles are batch-stage", () => {
+    const a: Article = { ...makeArticle("a"), stage: "batch" };
+    const b: Article = { ...makeArticle("b"), stage: "batch" };
+    expect(filterDashboardVisible([a, b])).toEqual([]);
+  });
+
+  it("is a pure function (does not mutate input)", () => {
+    const input: Article[] = [
+      { ...makeArticle("a"), stage: "batch" },
+      { ...makeArticle("b"), stage: "main" },
+    ];
+    const before = input.map((a) => a.id);
+    filterDashboardVisible(input);
+    expect(input.map((a) => a.id)).toEqual(before);
+  });
+});

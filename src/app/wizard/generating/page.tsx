@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useWizardStore } from "@/store/wizardStore";
 import { useArticleStore } from "@/store/articleStore";
+import { markdownToHtml } from "@/lib/markdown";
 import {
   BatchGeneratingProgress,
   type BatchJob,
@@ -62,6 +63,10 @@ export default function GeneratingPage() {
   const [allDone, setAllDone] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const startedRef = useRef(false);
+  // Stable batch ID for the entire generation run. Generated once when
+  // runBatch() starts; all articles in this run share it and the user
+  // is redirected to /batch/<id> when complete.
+  const batchIdRef = useRef<string>("");
 
   const hasCustomAngle = customAngle.trim().length > 0;
   const hasAngle = angleIds.length > 0 || hasCustomAngle;
@@ -114,6 +119,8 @@ export default function GeneratingPage() {
         angleId: spec.angleId ?? undefined,
         customAngle: spec.customAngle || undefined,
         styleId: spec.styleId,
+        batchId: batchIdRef.current,
+        stage: "batch",
       });
 
       updateJob(spec.key, { articleId: draft.id });
@@ -252,6 +259,15 @@ export default function GeneratingPage() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Generate a fresh batch ID for this run — shared by every article
+    // produced below and used for the post-completion redirect.
+    const tsPart = Date.now().toString(36);
+    const randPart =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID().slice(0, 8)
+        : Math.random().toString(36).slice(2, 10);
+    batchIdRef.current = `batch-${tsPart}-${randPart}`;
+
     const specs = buildJobSpecs();
     const initialJobs: BatchJob[] = specs.map((s) => ({
       key: s.key,
@@ -316,7 +332,10 @@ export default function GeneratingPage() {
   useEffect(() => {
     if (!allDone) return;
     const timer = setTimeout(() => {
-      router.push("/");
+      const target = batchIdRef.current
+        ? `/batch/${batchIdRef.current}`
+        : "/";
+      router.push(target);
     }, 1500);
     return () => clearTimeout(timer);
   }, [allDone, router]);
@@ -452,24 +471,6 @@ export default function GeneratingPage() {
   );
 }
 
-function markdownToHtml(md: string): string {
-  return md
-    .split(/\n{2,}/)
-    .map((block) => {
-      const b = block.trim();
-      if (!b) return "";
-      if (b.startsWith("### ")) return `<h3>${escape(b.slice(4))}</h3>`;
-      if (b.startsWith("## ")) return `<h2>${escape(b.slice(3))}</h2>`;
-      if (b.startsWith("# ")) return `<h1>${escape(b.slice(2))}</h1>`;
-      return `<p>${escape(b)}</p>`;
-    })
-    .filter(Boolean)
-    .join("\n");
-}
-
-function escape(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
+// markdownToHtml is now imported from @/lib/markdown (supports headings,
+// **bold**, lists, blockquote, and hard line breaks instead of the prior
+// h1/h2/h3/p-only stub that left raw `**…**` markers in the article body).

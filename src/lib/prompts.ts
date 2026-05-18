@@ -4,6 +4,28 @@ import {
   getStructuralConstraints,
 } from "./humanize/chineseAntiPatterns";
 
+/**
+ * Hard constraint: all examples / companies / memes must be Chinese.
+ *
+ * The final output is published on WeChat Official Account (微信公众号),
+ * a Chinese-domestic platform. Foreign references (Google, Apple, Tesla,
+ * "yyds" → US slang equivalents, etc.) break tone and signal AI authorship.
+ *
+ * Injected into both body generation and humanize rewriting so the
+ * constraint applies from the first generation pass through any later
+ * rewriting rounds.
+ */
+const CHINA_LOCALIZATION_BLOCK = [
+  "中国本土化硬约束(公众号发布要求,绝对禁止违反):",
+  "- 不得使用中国以外的企业、产品、案例。禁止举 Google、Apple、Amazon、Microsoft、Meta、Tesla、OpenAI、Netflix、Uber、Airbnb、Stripe、Notion、Slack、Salesforce、SAP、Oracle 等海外公司作为示例",
+  "- 必须用中国企业:阿里巴巴/淘宝/天猫、腾讯/微信、字节跳动/抖音/飞书、美团、拼多多、京东、华为、小米、滴滴、百度、网易、B 站、小红书、快手、得物、SHEIN、蔚来/小鹏/理想、宁德时代、比亚迪、京东方、安克、海尔、海康威视等",
+  "- 中国本土行业案例:制造业(三一/海尔/比亚迪车间)、电商(双 11/618/带货)、SaaS(钉钉/飞书/腾讯文档)、金融(网商银行/微众银行)、出行(高德/滴滴)等",
+  "- 不得使用海外网络热梗、英文俚语、好莱坞/欧美影视/体育典故。禁止「I have a dream」「Just do it」「May the force be with you」等",
+  "- 可用中国本土网络表达(克制使用):如「人均」「卷王」「降本增效」(标准商业语)、「打工人」「上班族」等,但不要堆砌",
+  "- 数据/价格用人民币(¥/元)、平方米、公里;不要用美元、英尺、英里",
+  "- 时间地点写中国:北京/上海/杭州/深圳/广州、上半年/Q3,不要纽约/旧金山/伦敦",
+].join("\n");
+
 export type PipelineNode =
   | "outline"
   | "body"
@@ -133,11 +155,21 @@ const TEMPLATES: Record<PipelineNode, PromptTemplate> = {
       "- 想强调一句关键结论时,用引用语法(> 开头)",
       "- 段落之间空一行,不要连成大段",
       "",
+      "正文段落硬性要求(非常重要,违反会被退回):",
+      "- 禁止把内容压缩到标题里:每个 ### 小标题下面必须紧跟 2-3 段完整正文段落(普通 markdown 段落,不是列表也不是引用)",
+      "- 每段正文段落 80-180 字,讲一个具体场景:中国企业名 + 真实业务动作 + 量化数字",
+      "- 标题只放观点提要(10-25 字),具体证据、数据、故事必须写到段落里",
+      "- 反例(错误,扣分):「### 上线快 — **3 天完成 POC**」紧跟下一个 ### 标题",
+      "- 正例:「### 上线快」下面写「某华东快消企业(年营收 47 亿)6 月 12 日 POC 启动,6 月 25 日完成首条产线接入,期间 IT 部门只配合做了 2 次权限确认。整个过程没有写代码,运营主管自己拖完了核心流程。」",
+      "- 整篇文章里 <p> 段落(空行分隔的纯文本块)数量必须 ≥ 6 段",
+      "",
       "硬约束:",
       "1. 避免「首先/其次/最后」这种老掉牙的结构词",
       "2. 不要出现「在当今/在这个时代」类套话",
       "3. 不要使用 em-dash(——),长破折号改用句号或分号",
       "4. 字数不少于 900 字,不超过 1800 字",
+      "",
+      CHINA_LOCALIZATION_BLOCK,
     ].join("\n"),
     user: [
       "【产品】{product}",
@@ -209,6 +241,8 @@ const TEMPLATES: Record<PipelineNode, PromptTemplate> = {
       "",
       "结构反模式(禁止使用以下写法):",
       getStructuralConstraints(),
+      "",
+      CHINA_LOCALIZATION_BLOCK,
       "",
       "{articleTypeBlock}",
     ].join("\n"),

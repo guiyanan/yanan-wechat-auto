@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Inbox, Search } from "lucide-react";
 import type { Article, ArticleStatus, Product } from "@/types";
 import { ArticleRow } from "./ArticleRow";
+import { PushConfirmModal } from "./PushConfirmModal";
 import { StatusBadge } from "./StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,10 @@ const FILTERS: Array<{ key: ArticleStatus | "all"; label: string }> = [
 export function ArticleList({ articles, products }: ArticleListProps) {
   const [filter, setFilter] = useState<ArticleStatus | "all">("all");
   const [query, setQuery] = useState("");
+  // Single shared modal for the whole list; each row's "推送" button
+  // bubbles its article up here. Holding the article (not just its id)
+  // avoids a re-read after status changes mid-push.
+  const [pushTarget, setPushTarget] = useState<Article | null>(null);
 
   const productMap = useMemo(() => {
     const map = new Map<string, Product>();
@@ -85,11 +90,12 @@ export function ArticleList({ articles, products }: ArticleListProps) {
         ))}
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] items-center gap-6 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-6 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
         <span>标题 · 产品 · 作者</span>
         <span>状态</span>
         <span className="hidden lg:inline">AI 浓度</span>
         <span className="hidden sm:inline text-right">阅读</span>
+        <span className="text-center">推送</span>
         <span className="text-right">更新</span>
       </div>
 
@@ -102,11 +108,19 @@ export function ArticleList({ articles, products }: ArticleListProps) {
               <ArticleRow
                 article={article}
                 product={productMap.get(article.productId)}
+                onPushClick={setPushTarget}
               />
             </li>
           ))}
         </ul>
       )}
+
+      <PushConfirmModal
+        article={pushTarget}
+        product={pushTarget ? productMap.get(pushTarget.productId) : undefined}
+        open={pushTarget !== null}
+        onClose={() => setPushTarget(null)}
+      />
     </section>
   );
 }

@@ -8,11 +8,17 @@ import {
   generateTitles,
   parseTitles,
   streamChat,
+  humanize,
   QwenAuthError,
 } from "@/lib/qwen";
 import { renderPrompt } from "@/lib/prompts";
 import { generateCoverCandidates } from "@/lib/mockCovers";
 import { seededBool } from "@/lib/seed";
+import { inferArticleType } from "@/lib/articleType";
+import {
+  runHumanizePipeline,
+  buildQwenHumanizeFn,
+} from "@/lib/humanize/pipeline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +33,12 @@ interface GenerateRequest {
   customAngle?: string;
   styleId: string;
   articleId?: string;
+  /**
+   * When true, run the humanize pipeline (L1+L2+L3) on the body
+   * between the body and titles stages.
+   * Default: false (keeps existing behaviour unchanged).
+   */
+  autoHumanize?: boolean;
 }
 
 type StageEvent =
@@ -154,6 +166,43 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           emitStageFailed("body", Date.now() - t0, errMsg(err));
           throw err;
+        }
+
+        // ---------- Stage 2b · humanize (optional) ----------
+        if (body.autoHumanize) {
+          emitStageStart("humanize" as PipelineStageId);
+          t0 = Date.now();
+          try {
+            const articleType = inferArticleType({
+              angleId: body.angleId,
+              customAngle: body.customAngle,
+            });
+            const humanizeFn = buildQwenHumanizeFn({
+              intent:
+                "在保持主要观点与事实的前提下，用更接近人手写作的语气逐段重写，降低 AI 痕迹。不口语化，不过度学术，业务视角。",
+              styleName: style.name,
+              styleProfile: style.promptProfile,
+              articleType,
+              humanize,
+            });
+            const pipelineResult = await runHumanizePipeline(
+              result.body,
+              humanizeFn,
+              { threshold: 40, maxRounds: 2, concurrency: 3, signal }
+            );
+            result.body = pipelineResult.text;
+            emitStageDone("humanize" as PipelineStageId, Date.now() - t0, {
+              score: pipelineResult.scoreBreakdown.total,
+              rounds: pipelineResult.totalRounds,
+            });
+          } catch (err) {
+            // Non-fatal: if humanize fails, continue with original body
+            emitStageFailed(
+              "humanize" as PipelineStageId,
+              Date.now() - t0,
+              errMsg(err)
+            );
+          }
         }
 
         // ---------- Stage 3 · titles ----------

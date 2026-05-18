@@ -34,6 +34,18 @@ export interface DashboardKpis {
   avgReaders: number;
 }
 
+/**
+ * Filter out articles that belong only to the batch preview page
+ * (stage === "batch") and should not appear in the main Dashboard.
+ * Articles with stage === undefined are kept (backward compatibility
+ * with seed data and pre-batch-feature drafts).
+ *
+ * Pure function — does not mutate the input array.
+ */
+export function filterDashboardVisible(articles: Article[]): Article[] {
+  return articles.filter((a) => a.stage !== "batch");
+}
+
 export function computeKpis(articles: Article[]): DashboardKpis {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);

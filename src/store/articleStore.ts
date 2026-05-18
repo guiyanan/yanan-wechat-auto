@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import seedArticles from "@/data/articles.json";
-import type { Article, ArticleStatus } from "@/types";
+import type { Article, ArticleStage, ArticleStatus } from "@/types";
 
 const SEED: readonly Article[] = seedArticles as Article[];
 
@@ -13,6 +13,11 @@ export interface ArticleStoreState {
   // Reads
   listAll: () => Article[];
   getById: (id: string) => Article | undefined;
+  /**
+   * Return all articles (drafts + seed) that share the given batchId,
+   * sorted by createdAt ascending. Used by the batch preview page.
+   */
+  listByBatch: (batchId: string) => Article[];
 
   // Writes
   upsert: (article: Article) => void;
@@ -38,6 +43,13 @@ export interface CreateDraftInput {
   customAngle?: string;
   styleId: string;
   createdBy?: string;
+  /**
+   * Batch ID for grouping articles produced by one generation run.
+   * Pass `stage: "batch"` together so the article is hidden from the
+   * main Dashboard until promoted via humanize.
+   */
+  batchId?: string;
+  stage?: ArticleStage;
 }
 
 function nowIso(): string {
@@ -77,6 +89,8 @@ function blankArticle(input: CreateDraftInput): Article {
     createdBy: input.createdBy ?? "当前用户",
     createdAt: iso,
     updatedAt: iso,
+    batchId: input.batchId,
+    stage: input.stage,
   };
 }
 
@@ -101,6 +115,23 @@ export const useArticleStore = create<ArticleStoreState>()(
         const draft = get().drafts[id];
         if (draft) return draft;
         return SEED.find((a) => a.id === id);
+      },
+
+      listByBatch: (batchId) => {
+        const drafts = Object.values(get().drafts);
+        const seeds = SEED;
+        const byId = new Map<string, Article>();
+        for (const s of seeds) {
+          if (s.batchId === batchId) byId.set(s.id, s);
+        }
+        // Drafts take priority (so promoted articles surface their new stage)
+        for (const d of drafts) {
+          if (d.batchId === batchId) byId.set(d.id, d);
+        }
+        return Array.from(byId.values()).sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       },
 
       upsert: (article) =>

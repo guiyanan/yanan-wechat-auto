@@ -9,7 +9,12 @@ import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ArticleList } from "@/components/dashboard/ArticleList";
 import { ArticleListSkeleton } from "@/components/dashboard/ArticleListSkeleton";
 import { useArticleStore } from "@/store/articleStore";
-import { computeKpis, getAllArticles, getAllProducts } from "@/lib/articles";
+import {
+  computeKpis,
+  filterDashboardVisible,
+  getAllArticles,
+  getAllProducts,
+} from "@/lib/articles";
 import type { Article } from "@/types";
 import { aiScoreMeta } from "@/lib/aiScore";
 
@@ -27,7 +32,9 @@ export default function DashboardPage() {
     const byId = new Map<string, Article>();
     for (const s of seed) byId.set(s.id, s);
     for (const d of Object.values(drafts)) byId.set(d.id, d);
-    return Array.from(byId.values()).sort(
+    // Hide articles still in batch preview stage — they belong to /batch/[id],
+    // not the main Dashboard, until humanize promotes them to stage="main".
+    return filterDashboardVisible(Array.from(byId.values())).sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText, Send } from "lucide-react";
 import type { Article, Product } from "@/types";
 import { formatRelativeDate } from "@/lib/articles";
 import { AiScoreBar } from "./AiScoreBar";
@@ -25,9 +25,21 @@ function resolveStyleName(article: Article): string | null {
 interface ArticleRowProps {
   article: Article;
   product?: Product;
+  /** Fired when the row's standalone "推送" button is clicked. */
+  onPushClick?: (article: Article) => void;
 }
 
-export function ArticleRow({ article, product }: ArticleRowProps) {
+/**
+ * One row in the dashboard article list.
+ *
+ * Layout: the title/product/chips area is a Link to the editor (or readonly
+ * preview for published articles). The "推送" button is rendered alongside
+ * but outside the Link, so clicking it does NOT trigger navigation —
+ * instead it bubbles up via `onPushClick` to open the confirm modal.
+ *
+ * The push button is hidden for already-published articles.
+ */
+export function ArticleRow({ article, product, onPushClick }: ArticleRowProps) {
   const isPublished = article.status === "published";
   const href = isPublished
     ? `/editor/${article.id}?readonly=1`
@@ -35,13 +47,11 @@ export function ArticleRow({ article, product }: ArticleRowProps) {
 
   const angleName = resolveAngleName(article);
   const styleName = resolveStyleName(article);
+  const canPush = !isPublished && Boolean(article.contentHtml?.trim());
 
   return (
-    <Link
-      href={href}
-      className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] items-center gap-6 px-5 py-4 text-sm transition-colors hover:bg-slate-50"
-    >
-      <div className="flex items-center gap-3 min-w-0">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-6 px-5 py-4 text-sm transition-colors hover:bg-slate-50">
+      <Link href={href} className="flex items-center gap-3 min-w-0">
         <div
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
           style={{
@@ -70,7 +80,7 @@ export function ArticleRow({ article, product }: ArticleRowProps) {
             )}
           </div>
         </div>
-      </div>
+      </Link>
 
       <StatusBadge status={article.status} />
 
@@ -85,9 +95,25 @@ export function ArticleRow({ article, product }: ArticleRowProps) {
         <p className="text-[11px] text-slate-400">阅读</p>
       </div>
 
+      {/* Push button — sibling of the title Link so clicks don't navigate. */}
+      {canPush ? (
+        <button
+          type="button"
+          onClick={() => onPushClick?.(article)}
+          aria-label={`推送 ${article.title} 到微信草稿箱`}
+          title="推送到微信公众号草稿箱"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
+        >
+          <Send className="h-3 w-3" aria-hidden="true" />
+          推送
+        </button>
+      ) : (
+        <span className="w-[64px]" aria-hidden="true" />
+      )}
+
       <div className="text-right text-xs text-slate-500 min-w-[72px]">
         {formatRelativeDate(article.updatedAt)}
       </div>
-    </Link>
+    </div>
   );
 }

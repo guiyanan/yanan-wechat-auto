@@ -16,3 +16,16 @@ export {
   applyAllReplacements,
 } from "./zhDictionary";
 export type { Replacement } from "./zhDictionary";
+
+export { varySentenceLength, postProcess } from "./postProcess";
+
+export { detectScore, detectScoreTotal } from "./detectScore";
+export type { ScoreBreakdown } from "./detectScore";
+
+export {
+  splitSections,
+  joinSections,
+  runHumanizePipeline,
+  buildQwenHumanizeFn,
+} from "./pipeline";
+export type { HumanizeFn, PipelineOptions, PipelineResult } from "./pipeline";
