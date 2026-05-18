@@ -24,6 +24,7 @@ import { CoverPicker } from "@/components/editor/CoverPicker";
 import { scanLimitWords, uniqueMatchedWords } from "@/lib/limitWords";
 import { scanSensitive, uniqueTopics } from "@/lib/sensitiveTopics";
 import { streamSseDeltas } from "@/lib/sseClient";
+import { inferArticleType } from "@/lib/articleType";
 import type { HighlightState } from "@/components/editor/highlightExtension";
 
 const ANGLES = anglesData as Angle[];
@@ -86,10 +87,15 @@ function EditorView({
   const product = products.find((p) => p.id === article.productId);
   const angle = ANGLES.find((a) => a.id === article.angleId);
   const style = STYLES.find((s) => s.id === article.styleId);
+  const articleType = inferArticleType({
+    angleId: article.angleId,
+    customAngle: article.customAngle,
+  });
 
   const editorRef = useRef<RichEditorHandle>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const autoLoopAbortRef = useRef<AbortController | null>(null);
 
   const [title, setTitle] = useState(article.title);
   const [coverUrl, setCoverUrl] = useState<string | undefined>(
@@ -111,11 +117,16 @@ function EditorView({
     article.updatedAt ?? null
   );
   const [globalRunning, setGlobalRunning] = useState(false);
+  const [autoLoopRunning, setAutoLoopRunning] = useState(false);
+  const [autoLoopIter, setAutoLoopIter] = useState(0);
+  const AUTO_LOOP_TARGET = 30;
+  const AUTO_LOOP_MAX_ITERS = 3;
 
   // Cancel any in-flight request on unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      autoLoopAbortRef.current?.abort();
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, []);
@@ -221,6 +232,167 @@ function EditorView({
     setSavedAt(new Date().toISOString());
   }
 
+  // Wrap a single string into an AsyncGenerator so it can be fed into
+  // editorRef.streamReplace() (which expects AsyncIterable<string>).
+  async function* singleChunk(s: string): AsyncGenerator<string, void, unknown> {
+    yield s;
+  }
+
+  async function fetchAiScoreOnce(args: {
+    text: string;
+    previousScore?: number;
+    afterHumanize?: boolean;
+    iteration?: number;
+    signal: AbortSignal;
+  }): Promise<{ score: number; drop?: number }> {
+    const res = await fetch("/api/ai-score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: args.text,
+        articleId: article.id,
+        previousScore: args.previousScore,
+        afterHumanize: args.afterHumanize,
+        iteration: args.iteration,
+      }),
+      signal: args.signal,
+    });
+    if (!res.ok) throw new Error(`ai-score HTTP ${res.status}`);
+    return (await res.json()) as { score: number; drop?: number };
+  }
+
+  async function fetchHumanizeOnce(args: {
+    text: string;
+    intent: string;
+    signal: AbortSignal;
+  }): Promise<string> {
+    const res = await fetch("/api/humanize/once", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intent: args.intent,
+        text: args.text,
+        styleName: style?.name ?? "默认",
+        styleProfile: style?.promptProfile ?? "",
+        articleType,
+      }),
+      signal: args.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`humanize/once HTTP ${res.status}${body ? `: ${body}` : ""}`);
+    }
+    const json = (await res.json()) as { rewritten: string };
+    return json.rewritten;
+  }
+
+  function handleCancelAutoLoop() {
+    autoLoopAbortRef.current?.abort();
+  }
+
+  async function handleAutoHumanizeLoop() {
+    const handle = editorRef.current;
+    const ed = handle?.editor;
+    if (!handle || !ed) return;
+
+    let currentText = handle.getText();
+    if (!currentText.trim()) {
+      toast.error("正文为空");
+      return;
+    }
+
+    // One AbortController for the entire loop — both fetches share it so
+    // cancellation cuts in immediately at whatever step the loop is on.
+    autoLoopAbortRef.current?.abort();
+    autoLoopAbortRef.current = new AbortController();
+    const signal = autoLoopAbortRef.current.signal;
+
+    setAutoLoopRunning(true);
+    setAutoLoopIter(0);
+    setGlobalRunning(true);
+
+    let lastScore = aiScore;
+    let totalIters = iterations;
+
+    try {
+      // Baseline check — guarantees the displayed score reflects current text,
+      // even if the user edited the article since the last manual check.
+      const baseline = await fetchAiScoreOnce({ text: currentText, signal });
+      lastScore = baseline.score;
+      setAiScore(lastScore);
+      persistAiScore(lastScore, totalIters);
+
+      if (lastScore < AUTO_LOOP_TARGET) {
+        toast.success(`已达标:${lastScore} 分,无需改写`);
+        return;
+      }
+
+      for (let i = 0; i < AUTO_LOOP_MAX_ITERS; i++) {
+        if (signal.aborted) break;
+        setAutoLoopIter(i + 1);
+        toast.info(`第 ${i + 1}/${AUTO_LOOP_MAX_ITERS} 轮:${lastScore} 分 → 改写中…`);
+
+        const rewritten = await fetchHumanizeOnce({
+          text: currentText,
+          intent:
+            "在保持主要观点与事实的前提下,用更接近人手写作的语气,逐段重写这篇文章,降低 AI 痕迹。",
+          signal,
+        });
+        if (signal.aborted) break;
+
+        const docSize = ed.state.doc.content.size;
+        await handle.streamReplace(0, docSize, singleChunk(rewritten));
+        currentText = handle.getText();
+        runComplianceScan(currentText);
+        patch(article.id, { contentHtml: handle.getHtml() });
+        setSavedAt(new Date().toISOString());
+
+        if (signal.aborted) break;
+
+        totalIters += 1;
+        const after = await fetchAiScoreOnce({
+          text: currentText,
+          previousScore: lastScore,
+          afterHumanize: true,
+          iteration: totalIters,
+          signal,
+        });
+        lastScore = after.score;
+        setAiScore(lastScore);
+        setIterations(totalIters);
+        persistAiScore(lastScore, totalIters);
+        if (after.drop) {
+          toast.success(
+            `第 ${i + 1} 轮完成:-${after.drop} 分,当前 ${lastScore}`
+          );
+        }
+
+        if (lastScore < AUTO_LOOP_TARGET) {
+          toast.success(`已达标:${lastScore} 分,共 ${i + 1} 轮`);
+          return;
+        }
+      }
+
+      if (!signal.aborted) {
+        toast.warning(
+          `已尝试 ${AUTO_LOOP_MAX_ITERS} 轮,当前最低 ${lastScore} 分`
+        );
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        toast.info("已停止自动循环");
+        return;
+      }
+      toast.error(
+        `循环失败:${err instanceof Error ? err.message : String(err)}`
+      );
+    } finally {
+      setAutoLoopRunning(false);
+      setAutoLoopIter(0);
+      setGlobalRunning(false);
+    }
+  }
+
   async function handleRunHumanizeFull() {
     const handle = editorRef.current;
     const ed = handle?.editor;
@@ -296,6 +468,7 @@ function EditorView({
           text,
           styleName: style?.name ?? "默认",
           styleProfile: style?.promptProfile ?? "",
+          articleType,
         }),
         signal: abortRef.current.signal,
       });
@@ -479,6 +652,12 @@ function EditorView({
               humanizing={humanizing}
               onRefresh={handleRefreshScore}
               onRunHumanize={handleRunHumanizeFull}
+              onAutoLoop={handleAutoHumanizeLoop}
+              onCancelAutoLoop={handleCancelAutoLoop}
+              autoLoopRunning={autoLoopRunning}
+              autoLoopIter={autoLoopIter}
+              autoLoopMaxIters={AUTO_LOOP_MAX_ITERS}
+              autoLoopTarget={AUTO_LOOP_TARGET}
               disabled={isReadonly}
             />
             <ComplianceChecklist

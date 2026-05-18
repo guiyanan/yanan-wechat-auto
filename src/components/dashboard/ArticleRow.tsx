@@ -4,6 +4,23 @@ import type { Article, Product } from "@/types";
 import { formatRelativeDate } from "@/lib/articles";
 import { AiScoreBar } from "./AiScoreBar";
 import { StatusBadge } from "./StatusBadge";
+import anglesData from "@/data/angles.json";
+import stylesData from "@/data/styles.json";
+import type { Angle, WritingStyle } from "@/types";
+
+const ANGLES = anglesData as Angle[];
+const STYLES = stylesData as WritingStyle[];
+
+function resolveAngleName(article: Article): string | null {
+  if (article.customAngle) return `自定义:${article.customAngle}`;
+  if (!article.angleId) return null;
+  return ANGLES.find((a) => a.id === article.angleId)?.name ?? null;
+}
+
+function resolveStyleName(article: Article): string | null {
+  if (!article.styleId) return null;
+  return STYLES.find((s) => s.id === article.styleId)?.name ?? null;
+}
 
 interface ArticleRowProps {
   article: Article;
@@ -15,6 +32,9 @@ export function ArticleRow({ article, product }: ArticleRowProps) {
   const href = isPublished
     ? `/editor/${article.id}?readonly=1`
     : `/editor/${article.id}`;
+
+  const angleName = resolveAngleName(article);
+  const styleName = resolveStyleName(article);
 
   return (
     <Link
@@ -34,9 +54,21 @@ export function ArticleRow({ article, product }: ArticleRowProps) {
         </div>
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900">{article.title}</p>
-          <p className="mt-0.5 truncate text-xs text-slate-500">
-            {product?.name ?? "未知产品"} · {article.createdBy}
-          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-slate-500">
+              {product?.name ?? "未知产品"} · {article.createdBy}
+            </span>
+            {angleName && (
+              <span className="inline-flex items-center rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                {angleName}
+              </span>
+            )}
+            {styleName && (
+              <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
+                {styleName}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

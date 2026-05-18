@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Eye, FileText, Gauge, Plus, Users } from "lucide-react";
 import { TopNav } from "@/components/nav/TopNav";
+import { BatchBanner } from "@/components/dashboard/BatchBanner";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ArticleList } from "@/components/dashboard/ArticleList";
 import { ArticleListSkeleton } from "@/components/dashboard/ArticleListSkeleton";
@@ -96,6 +97,8 @@ export default function DashboardPage() {
             hint="仅计已发布"
           />
         </section>
+
+        {hydrated && <BatchBanner />}
 
         {/* Avoid hydration mismatch: list renders after client hydrate */}
         {hydrated ? (

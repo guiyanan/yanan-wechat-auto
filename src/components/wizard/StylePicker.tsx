@@ -6,28 +6,33 @@ import { cn } from "@/lib/utils";
 
 interface StylePickerProps {
   styles: WritingStyle[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedIds: string[];
+  onToggle: (id: string) => void;
   onRequestTrain: () => void;
 }
 
 export function StylePicker({
   styles,
-  selectedId,
-  onSelect,
+  selectedIds,
+  onToggle,
   onRequestTrain,
 }: StylePickerProps) {
   return (
     <div className="space-y-5">
+      <p className="text-sm text-slate-500">
+        勾选一个或多个风格。每勾一个,会按「角度 × 风格」组合各产出一篇独立文章。
+      </p>
+
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {styles.map((style) => {
-          const selected = selectedId === style.id;
+          const selected = selectedIds.includes(style.id);
           return (
             <li key={style.id}>
               <button
                 type="button"
-                onClick={() => onSelect(style.id)}
-                aria-pressed={selected}
+                onClick={() => onToggle(style.id)}
+                role="checkbox"
+                aria-checked={selected}
                 className={cn(
                   "relative flex w-full flex-col gap-3 rounded-xl border bg-white p-5 text-left shadow-sm transition-all",
                   selected
@@ -35,8 +40,19 @@ export function StylePicker({
                     : "border-slate-200 hover:border-slate-300 hover:shadow-md"
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div className="flex items-start gap-3">
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border-2 text-xs font-semibold transition-colors",
+                      selected
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-300 bg-white text-slate-400"
+                    )}
+                    aria-hidden="true"
+                  >
+                    {selected ? <Check className="h-3.5 w-3.5" /> : null}
+                  </span>
+                  <div className="min-w-0 flex-1">
                     <p className="text-base font-semibold text-slate-900">
                       {style.name}
                     </p>
@@ -51,11 +67,6 @@ export function StylePicker({
                       ))}
                     </div>
                   </div>
-                  {selected && (
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                    </span>
-                  )}
                 </div>
 
                 <div

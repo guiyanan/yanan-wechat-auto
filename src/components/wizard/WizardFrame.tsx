@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { Stepper, type StepKey } from "./Stepper";
@@ -47,18 +48,30 @@ export function WizardFrame({
   primaryLabel,
   onPrimary,
 }: WizardFrameProps) {
-  const productId = useWizardStore((s) => s.productId);
-  const angleId = useWizardStore((s) => s.angleId);
-  const customAngle = useWizardStore((s) => s.customAngle);
-  const styleId = useWizardStore((s) => s.styleId);
+  // zustand persist hydrates from sessionStorage on the client. To avoid SSR
+  // hydration mismatches (server sees empty store, client sees populated),
+  // gate every store-derived value on `mounted`.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const storeProductId = useWizardStore((s) => s.productId);
+  const storeAngleIds = useWizardStore((s) => s.angleIds);
+  const storeCustomAngle = useWizardStore((s) => s.customAngle);
+  const storeStyleIds = useWizardStore((s) => s.styleIds);
+
+  const productId = mounted ? storeProductId : null;
+  const angleIds = mounted ? storeAngleIds : [];
+  const customAngle = mounted ? storeCustomAngle : "";
+  const styleIds = mounted ? storeStyleIds : [];
 
   const product = getAllProducts().find((p) => p.id === productId) ?? null;
-  const angle = ANGLES.find((a) => a.id === angleId) ?? null;
-  const style = STYLES.find((s) => s.id === styleId) ?? null;
+  const selectedAngles = ANGLES.filter((a) => angleIds.includes(a.id));
+  const selectedStyles = STYLES.filter((s) => styleIds.includes(s.id));
 
-  const completedThrough: StepKey | null = styleId
+  const hasAngle = angleIds.length > 0 || customAngle.trim().length > 0;
+  const completedThrough: StepKey | null = styleIds.length > 0
     ? "style"
-    : angleId || customAngle.trim()
+    : hasAngle
       ? "angle"
       : productId
         ? "product"
@@ -114,9 +127,9 @@ export function WizardFrame({
         </div>
         <SummaryCard
           product={product}
-          angle={angle}
+          angles={selectedAngles}
           customAngle={customAngle}
-          style={style}
+          styles={selectedStyles}
         />
       </main>
 

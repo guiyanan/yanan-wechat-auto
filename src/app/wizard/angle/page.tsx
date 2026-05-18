@@ -9,25 +9,25 @@ import type { Angle } from "@/types";
 const ANGLES = anglesData as Angle[];
 
 export default function WizardAnglePage() {
-  const angleId = useWizardStore((s) => s.angleId);
+  const angleIds = useWizardStore((s) => s.angleIds);
   const customAngle = useWizardStore((s) => s.customAngle);
-  const setAngleId = useWizardStore((s) => s.setAngleId);
+  const toggleAngleId = useWizardStore((s) => s.toggleAngleId);
   const setCustomAngle = useWizardStore((s) => s.setCustomAngle);
 
-  const canAdvance = !!angleId || customAngle.trim().length > 0;
+  const canAdvance = angleIds.length > 0 || customAngle.trim().length > 0;
 
   return (
     <WizardFrame
       step="angle"
-      title="第二步 · 选角度"
-      description="从 10 个预置角度里挑一个,或者自己写一个。角度决定了 AI 写作的切入视角和叙事结构。"
+      title="第二步 · 选角度(可多选)"
+      description="角度决定文章的切入视角和读者定位。"
       canAdvance={canAdvance}
     >
       <AnglePicker
         angles={ANGLES}
-        selectedId={angleId}
+        selectedIds={angleIds}
         customAngle={customAngle}
-        onSelect={setAngleId}
+        onToggle={toggleAngleId}
         onCustomChange={setCustomAngle}
       />
     </WizardFrame>

@@ -7,8 +7,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileText,
   Send,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useArticleStore } from "@/store/articleStore";
@@ -22,6 +24,12 @@ import { exportWechatHtml } from "@/lib/wechatHtml";
 import { buildAigcMetadata } from "@/lib/aigcMeta";
 import { scanLimitWords, uniqueMatchedWords } from "@/lib/limitWords";
 import { scanSensitive, uniqueTopics } from "@/lib/sensitiveTopics";
+import {
+  type WechatTheme,
+  WECHAT_THEME_LABELS,
+  defaultThemeForArticleType,
+} from "@/lib/wechatThemes";
+import { inferArticleType } from "@/lib/articleType";
 
 export default function ReviewPage({
   params,
@@ -78,6 +86,17 @@ function ReviewView({ article }: { article: Article }) {
   const [agreedResponsibility, setAgreedResponsibility] = useState(false);
   const [addAigcNotice, setAddAigcNotice] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [pushingDraft, setPushingDraft] = useState(false);
+  const [draftMediaId, setDraftMediaId] = useState<string | null>(null);
+
+  const articleType = useMemo(
+    () => inferArticleType({ angleId: article.angleId, customAngle: article.customAngle }),
+    [article.angleId, article.customAngle]
+  );
+  const [selectedTheme, setSelectedTheme] = useState<WechatTheme>(
+    article.exportTheme ?? defaultThemeForArticleType(articleType)
+  );
+  const [decorate, setDecorate] = useState(true);
 
   const account = useMemo<WechatAccount | null>(
     () => accounts.find((a) => a.id === selectedAccountId) ?? null,
@@ -111,6 +130,12 @@ function ReviewView({ article }: { article: Article }) {
     !hasLimitWords &&
     !publishing;
 
+  useEffect(() => {
+    if (article.exportTheme !== selectedTheme) {
+      patch(article.id, { exportTheme: selectedTheme });
+    }
+  }, [selectedTheme, article.id, article.exportTheme, patch]);
+
   const exportedHtml = useMemo(
     () =>
       exportWechatHtml({
@@ -120,13 +145,15 @@ function ReviewView({ article }: { article: Article }) {
         author: article.createdBy,
         publishedAt: article.publishedAt ?? new Date().toISOString(),
         addExplicitNotice: addAigcNotice,
+        theme: selectedTheme,
+        decorate,
         meta: buildAigcMetadata({
           articleId: article.id,
           humanReviewed: true,
           generatedAt: article.createdAt,
         }),
       }),
-    [article, addAigcNotice]
+    [article, addAigcNotice, selectedTheme, decorate]
   );
 
   async function handlePublish() {
@@ -165,6 +192,50 @@ function ReviewView({ article }: { article: Article }) {
 
     toast.success(`已发布到 ${account.name}`);
     setTimeout(() => router.push("/"), 1800);
+  }
+
+  async function handlePushDraft() {
+    if (pushingDraft) return;
+    setPushingDraft(true);
+    try {
+      const res = await fetch("/api/wechat/push-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: article.title,
+          bodyHtml: article.contentHtml,
+          author: article.createdBy,
+          theme: selectedTheme,
+          decorate,
+          addAigcNotice: addAigcNotice,
+          articleId: article.id,
+          digest: article.contentHtml
+            .replace(/<[^>]+>/g, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .substring(0, 120),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setDraftMediaId(data.mediaId);
+        toast.success("已推送到微信草稿箱！请到公众号后台查看", {
+          duration: 6000,
+          action: {
+            label: "打开公众号后台",
+            onClick: () =>
+              window.open("https://mp.weixin.qq.com", "_blank"),
+          },
+        });
+      } else {
+        toast.error(`推送失败: ${data.error ?? "未知错误"}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "网络错误";
+      toast.error(`推送失败: ${msg}`);
+    } finally {
+      setPushingDraft(false);
+    }
   }
 
   return (
@@ -211,6 +282,47 @@ function ReviewView({ article }: { article: Article }) {
 
             <Section
               step={2}
+              title="排版风格"
+              subtitle="选择主题后实时刷新预览,排版已针对微信兼容优化"
+            >
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="text-sm font-medium text-slate-700">
+                    主题
+                  </label>
+                  <div className="flex gap-2">
+                    {(Object.keys(WECHAT_THEME_LABELS) as WechatTheme[]).map(
+                      (t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setSelectedTheme(t)}
+                          className={`inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium transition-colors ${
+                            selectedTheme === t
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          {WECHAT_THEME_LABELS[t]}
+                        </button>
+                      )
+                    )}
+                  </div>
+                  <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={decorate}
+                      onChange={(e) => setDecorate(e.target.checked)}
+                    />
+                    自动美化(emoji列表 + 重点提升)
+                  </label>
+                </div>
+              </div>
+            </Section>
+
+            <Section
+              step={3}
               title="预览"
               subtitle="微信公众号后台粘贴后的呈现效果"
             >
@@ -218,7 +330,7 @@ function ReviewView({ article }: { article: Article }) {
             </Section>
 
             <Section
-              step={3}
+              step={4}
               title="合规清单"
               subtitle="发布前请确认全部通过"
             >
@@ -234,7 +346,7 @@ function ReviewView({ article }: { article: Article }) {
             </Section>
 
             <Section
-              step={4}
+              step={5}
               title="确认声明"
               subtitle="勾选动作会写入审计记录(PRD 6.1.7)"
             >
@@ -269,7 +381,7 @@ function ReviewView({ article }: { article: Article }) {
             </Section>
 
             <Section
-              step={5}
+              step={6}
               title="导出 HTML(微信公众号后台用)"
               subtitle="样式已内联,粘贴后格式不丢。图片 URL 保留,后续需在 WeChat 后台手动替换为公众号 CDN。"
             >
@@ -277,6 +389,59 @@ function ReviewView({ article }: { article: Article }) {
                 html={exportedHtml}
                 filename={`${article.title || "joto-article"}.html`}
               />
+            </Section>
+
+            <Section
+              step={7}
+              title="推送到微信草稿箱"
+              subtitle="一键推送到公众号草稿箱,在公众号后台手动发布(零封号风险)"
+            >
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                {draftMediaId ? (
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2
+                      className="h-5 w-5 flex-shrink-0 text-emerald-500"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900">
+                        已成功推送到草稿箱
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        media_id: {draftMediaId}
+                      </p>
+                    </div>
+                    <a
+                      href="https://mp.weixin.qq.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                      打开公众号后台
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-slate-600">
+                        将使用当前排版主题({WECHAT_THEME_LABELS[selectedTheme]})
+                        渲染并推送到微信公众号草稿箱。需要先在 .env.local 配置
+                        WECHAT_APPID 和 WECHAT_APPSECRET。
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePushDraft}
+                      disabled={pushingDraft}
+                      className="inline-flex h-10 flex-shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      <Upload className="h-4 w-4" aria-hidden="true" />
+                      {pushingDraft ? "推送中…" : "推送到草稿箱"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </Section>
           </div>
 

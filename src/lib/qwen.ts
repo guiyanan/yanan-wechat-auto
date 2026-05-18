@@ -3,6 +3,7 @@ import {
   renderPrompt,
   type PipelineNode,
 } from "./prompts";
+import type { ArticleType } from "./articleType";
 
 export const DASHSCOPE_BASE_URL =
   "https://dashscope.aliyuncs.com/compatible-mode/v1";
@@ -268,6 +269,7 @@ export interface HumanizeArgs {
   text: string;
   styleName: string;
   styleProfile: string;
+  articleType: ArticleType;
   client?: OpenAI;
   signal?: AbortSignal;
 }
@@ -280,6 +282,7 @@ export async function* humanize(
     text: args.text,
     styleName: args.styleName,
     styleProfile: args.styleProfile,
+    articleType: args.articleType,
   });
 }
 

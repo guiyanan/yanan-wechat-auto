@@ -1,40 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
-  Check,
-  Loader2,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
 import { useWizardStore } from "@/store/wizardStore";
 import { useArticleStore } from "@/store/articleStore";
-import type { PipelineStageId } from "@/types";
-import { cn } from "@/lib/utils";
+import {
+  BatchGeneratingProgress,
+  type BatchJob,
+} from "@/components/wizard/BatchGeneratingProgress";
+import anglesData from "@/data/angles.json";
+import stylesData from "@/data/styles.json";
+import type { Angle, WritingStyle, PipelineStageId } from "@/types";
 
-const STAGES: Array<{
-  id: PipelineStageId;
-  label: string;
-  hint: string;
-}> = [
-  { id: "outline", label: "大纲生成", hint: "基于角度 + 产品知识库" },
-  { id: "body", label: "撰写正文", hint: "按选定风格流式输出" },
-  { id: "titles", label: "候选标题", hint: "5 个不同结构" },
-  { id: "covers", label: "候选封面", hint: "4 种风格(mock)" },
-  { id: "factcheck", label: "事实核查", hint: "mock · 1/10 概率警告" },
+const ANGLES = anglesData as Angle[];
+const STYLES = stylesData as WritingStyle[];
+const TOTAL_STAGES = 5;
+const MAX_CONCURRENCY = 3;
+
+const STAGE_ORDER: PipelineStageId[] = [
+  "outline",
+  "body",
+  "titles",
+  "covers",
+  "factcheck",
 ];
-
-type StageStatus = "pending" | "running" | "done" | "failed";
-
-interface StageState {
-  status: StageStatus;
-  elapsedMs?: number;
-  error?: string;
-}
 
 interface GenerationResult {
   outline: string;
@@ -44,173 +40,286 @@ interface GenerationResult {
   factcheck: { passed: boolean; warning: string | null };
 }
 
-const INITIAL_STATES: Record<PipelineStageId, StageState> = {
-  outline: { status: "pending" },
-  body: { status: "pending" },
-  titles: { status: "pending" },
-  covers: { status: "pending" },
-  factcheck: { status: "pending" },
-};
+interface JobSpec {
+  key: string;
+  angleId: string | null;
+  angleName: string;
+  customAngle: string;
+  styleId: string;
+  styleName: string;
+}
 
 export default function GeneratingPage() {
   const router = useRouter();
   const productId = useWizardStore((s) => s.productId);
-  const angleId = useWizardStore((s) => s.angleId);
+  const angleIds = useWizardStore((s) => s.angleIds);
   const customAngle = useWizardStore((s) => s.customAngle);
-  const styleId = useWizardStore((s) => s.styleId);
+  const styleIds = useWizardStore((s) => s.styleIds);
   const createDraft = useArticleStore((s) => s.createDraft);
   const patch = useArticleStore((s) => s.patch);
 
-  const [stages, setStages] = useState<Record<PipelineStageId, StageState>>(
-    INITIAL_STATES
-  );
-  const [bodyPreview, setBodyPreview] = useState("");
-  const [fatalError, setFatalError] = useState<string | null>(null);
-  const [factcheckWarning, setFactcheckWarning] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<BatchJob[]>([]);
+  const [allDone, setAllDone] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const startedRef = useRef(false);
 
-  const ready = !!productId && !!styleId && (!!angleId || customAngle.trim());
+  const hasCustomAngle = customAngle.trim().length > 0;
+  const hasAngle = angleIds.length > 0 || hasCustomAngle;
+  const ready = !!productId && hasAngle && styleIds.length > 0;
+
+  const buildJobSpecs = useCallback((): JobSpec[] => {
+    const specs: JobSpec[] = [];
+    const effectiveAngles: Array<{
+      id: string | null;
+      name: string;
+      custom: string;
+    }> = hasCustomAngle
+      ? [{ id: null, name: "自定义角度", custom: customAngle.trim() }]
+      : angleIds.map((aid) => {
+          const a = ANGLES.find((x) => x.id === aid);
+          return { id: aid, name: a?.name ?? aid, custom: "" };
+        });
+
+    for (const angle of effectiveAngles) {
+      for (const sid of styleIds) {
+        const s = STYLES.find((x) => x.id === sid);
+        specs.push({
+          key: `${angle.id ?? "custom"}-${sid}`,
+          angleId: angle.id,
+          angleName: angle.name,
+          customAngle: angle.custom,
+          styleId: sid,
+          styleName: s?.name ?? sid,
+        });
+      }
+    }
+    return specs;
+  }, [angleIds, customAngle, hasCustomAngle, styleIds]);
+
+  const updateJob = useCallback(
+    (key: string, update: Partial<BatchJob>) => {
+      setJobs((prev) =>
+        prev.map((j) => (j.key === key ? { ...j, ...update } : j))
+      );
+    },
+    []
+  );
+
+  const runSingleJob = useCallback(
+    async (spec: JobSpec, signal: AbortSignal): Promise<void> => {
+      updateJob(spec.key, { status: "running", currentStage: "outline" });
+
+      const draft = createDraft({
+        productId: productId!,
+        angleId: spec.angleId ?? undefined,
+        customAngle: spec.customAngle || undefined,
+        styleId: spec.styleId,
+      });
+
+      updateJob(spec.key, { articleId: draft.id });
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId,
+            angleId: spec.angleId ?? undefined,
+            customAngle: spec.customAngle || undefined,
+            styleId: spec.styleId,
+            articleId: draft.id,
+          }),
+          signal,
+        });
+
+        if (!res.ok || !res.body) {
+          updateJob(spec.key, {
+            status: "failed",
+            error: `HTTP ${res.status} ${res.statusText}`,
+          });
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let bodyText = "";
+        const result: GenerationResult = {
+          outline: "",
+          body: "",
+          titles: [],
+          covers: [],
+          factcheck: { passed: true, warning: null },
+        };
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let sep = buffer.indexOf("\n\n");
+          while (sep !== -1) {
+            const raw = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            sep = buffer.indexOf("\n\n");
+            const line = raw.trim();
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (payload === "[DONE]") break;
+            try {
+              const e = JSON.parse(payload);
+              if (e.type === "stage") {
+                const stageId = e.stage as PipelineStageId;
+                if (e.status === "running") {
+                  updateJob(spec.key, { currentStage: stageId });
+                }
+                if (e.status === "done") {
+                  const stageIdx = STAGE_ORDER.indexOf(stageId);
+                  updateJob(spec.key, {
+                    completedStages: stageIdx + 1,
+                  });
+                }
+                if (stageId === "factcheck" && e.status === "done" && e.data) {
+                  result.factcheck = e.data as GenerationResult["factcheck"];
+                }
+                if (stageId === "outline" && e.status === "done" && e.data) {
+                  result.outline =
+                    (e.data as { outline: string }).outline ?? "";
+                }
+                if (stageId === "titles" && e.status === "done" && e.data) {
+                  result.titles =
+                    (e.data as { titles: string[] }).titles ?? [];
+                }
+                if (stageId === "covers" && e.status === "done" && e.data) {
+                  result.covers =
+                    (
+                      e.data as { covers: GenerationResult["covers"] }
+                    ).covers ?? [];
+                }
+              } else if (e.type === "body-delta") {
+                bodyText += e.delta;
+              } else if (e.type === "result") {
+                Object.assign(result, e.result);
+              } else if (e.type === "error") {
+                updateJob(spec.key, {
+                  status: "failed",
+                  error: e.error?.message ?? "生成失败",
+                });
+                return;
+              }
+            } catch {
+              // ignore malformed SSE
+            }
+          }
+        }
+
+        result.body = bodyText || result.body;
+
+        patch(draft.id, {
+          title: result.titles[0] ?? draft.title,
+          titleCandidates: result.titles,
+          contentHtml: markdownToHtml(result.body),
+          coverImageUrl: result.covers[0]?.url,
+          coverCandidates: result.covers.map((c) => c.url),
+          aiScore: {
+            value: 0,
+            checkedAt: new Date().toISOString(),
+            iterations: 0,
+          },
+          compliance: {
+            ...draft.compliance,
+            factCheckPassed: result.factcheck.passed,
+            factCheckWarning: result.factcheck.warning ?? undefined,
+          },
+        });
+
+        updateJob(spec.key, {
+          status: "done",
+          completedStages: TOTAL_STAGES,
+          currentStage: null,
+        });
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        updateJob(spec.key, {
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
+    [createDraft, patch, productId, updateJob]
+  );
+
+  const runBatch = useCallback(async () => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const specs = buildJobSpecs();
+    const initialJobs: BatchJob[] = specs.map((s) => ({
+      key: s.key,
+      angleName: s.angleName,
+      styleName: s.styleName,
+      status: "queued",
+      currentStage: null,
+      completedStages: 0,
+      totalStages: TOTAL_STAGES,
+    }));
+    setJobs(initialJobs);
+    setAllDone(false);
+
+    // Save batch info to sessionStorage for Dashboard banner
+    const batchLabels = specs.map((s) => `${s.angleName}×${s.styleName}`);
+    sessionStorage.setItem(
+      "joto-last-batch",
+      JSON.stringify({ count: specs.length, labels: batchLabels, ts: Date.now() })
+    );
+
+    const queue = [...specs];
+    const running = new Set<string>();
+
+    async function startNext(): Promise<void> {
+      if (controller.signal.aborted) return;
+      if (queue.length === 0) return;
+      if (running.size >= MAX_CONCURRENCY) return;
+
+      const spec = queue.shift()!;
+      running.add(spec.key);
+
+      try {
+        await runSingleJob(spec, controller.signal);
+      } finally {
+        running.delete(spec.key);
+        await startNext();
+      }
+    }
+
+    const starters = Array.from(
+      { length: Math.min(MAX_CONCURRENCY, specs.length) },
+      () => startNext()
+    );
+    await Promise.all(starters);
+
+    if (!controller.signal.aborted) {
+      setAllDone(true);
+    }
+  }, [buildJobSpecs, runSingleJob]);
 
   useEffect(() => {
     if (!ready) return;
     if (startedRef.current) return;
     startedRef.current = true;
-    runPipeline();
+    runBatch();
     return () => {
       abortRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
-  async function runPipeline() {
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setStages(INITIAL_STATES);
-    setBodyPreview("");
-    setFatalError(null);
-    setFactcheckWarning(null);
-
-    const draft = createDraft({
-      productId: productId!,
-      angleId: angleId ?? undefined,
-      customAngle: customAngle || undefined,
-      styleId: styleId!,
-    });
-
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId,
-          angleId: angleId ?? undefined,
-          customAngle: customAngle || undefined,
-          styleId,
-          articleId: draft.id,
-        }),
-        signal: controller.signal,
-      });
-      if (!res.ok || !res.body) {
-        setFatalError(`生成服务错误:HTTP ${res.status} ${res.statusText}`);
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let body = "";
-      const result: GenerationResult = {
-        outline: "",
-        body: "",
-        titles: [],
-        covers: [],
-        factcheck: { passed: true, warning: null },
-      };
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let sep = buffer.indexOf("\n\n");
-        while (sep !== -1) {
-          const raw = buffer.slice(0, sep);
-          buffer = buffer.slice(sep + 2);
-          sep = buffer.indexOf("\n\n");
-          const line = raw.trim();
-          if (!line.startsWith("data:")) continue;
-          const payload = line.slice(5).trim();
-          if (payload === "[DONE]") break;
-          try {
-            const e = JSON.parse(payload);
-            if (e.type === "stage") {
-              setStages((prev) => ({
-                ...prev,
-                [e.stage as PipelineStageId]: {
-                  status: e.status,
-                  elapsedMs: e.elapsedMs,
-                  error: e.error,
-                },
-              }));
-              if (e.stage === "factcheck" && e.status === "done" && e.data) {
-                const w = (e.data as { warning?: string | null }).warning;
-                setFactcheckWarning(w ?? null);
-                result.factcheck = e.data as GenerationResult["factcheck"];
-              }
-              if (e.stage === "outline" && e.status === "done" && e.data) {
-                result.outline = (e.data as { outline: string }).outline ?? "";
-              }
-              if (e.stage === "titles" && e.status === "done" && e.data) {
-                result.titles =
-                  (e.data as { titles: string[] }).titles ?? [];
-              }
-              if (e.stage === "covers" && e.status === "done" && e.data) {
-                result.covers =
-                  (e.data as { covers: GenerationResult["covers"] }).covers ?? [];
-              }
-            } else if (e.type === "body-delta") {
-              body += e.delta;
-              setBodyPreview(body);
-            } else if (e.type === "result") {
-              Object.assign(result, e.result);
-            } else if (e.type === "error") {
-              setFatalError(e.error?.message ?? "生成失败");
-            }
-          } catch {
-            // Ignore malformed event
-          }
-        }
-      }
-
-      if (fatalError) return;
-
-      // Persist to articleStore
-      patch(draft.id, {
-        title: result.titles[0] ?? draft.title,
-        titleCandidates: result.titles,
-        contentHtml: markdownToHtml(result.body),
-        coverImageUrl: result.covers[0]?.url,
-        coverCandidates: result.covers.map((c) => c.url),
-        aiScore: {
-          value: 0,
-          checkedAt: new Date().toISOString(),
-          iterations: 0,
-        },
-        compliance: {
-          ...draft.compliance,
-          factCheckPassed: result.factcheck.passed,
-          factCheckWarning: result.factcheck.warning ?? undefined,
-        },
-      });
-
-      setTimeout(() => {
-        router.push(`/editor/${draft.id}`);
-      }, 800);
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      setFatalError(err instanceof Error ? err.message : String(err));
-    }
-  }
+  useEffect(() => {
+    if (!allDone) return;
+    const timer = setTimeout(() => {
+      router.push("/");
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [allDone, router]);
 
   function cancelAndBack() {
     abortRef.current?.abort();
@@ -220,14 +329,9 @@ export default function GeneratingPage() {
   function retry() {
     abortRef.current?.abort();
     startedRef.current = false;
-    setFatalError(null);
-    setFactcheckWarning(null);
-    setStages(INITIAL_STATES);
-    setBodyPreview("");
-    // useEffect will restart
     setTimeout(() => {
       startedRef.current = true;
-      runPipeline();
+      runBatch();
     }, 50);
   }
 
@@ -257,179 +361,98 @@ export default function GeneratingPage() {
     );
   }
 
+  const jobCount = jobs.length;
+  const doneCount = jobs.filter((j) => j.status === "done").length;
+  const hasFailures = jobs.some((j) => j.status === "failed");
+
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto w-full max-w-4xl space-y-6">
         <header className="space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-100">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            生成中 · 5 阶段 pipeline
+            批量生成 · {jobCount} 篇文章
           </div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            正在生成文章
+            正在批量生成文章
           </h1>
           <p className="text-sm text-slate-500">
-            每个阶段都对你透明:产品知识库 → 大纲 → 正文(流式) → 标题 → 封面 → 事实核查
+            每篇文章经过 5 阶段 pipeline:大纲 → 正文 → 标题 → 封面 → 事实核查。同时最多并行 3 篇。
           </p>
         </header>
 
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <ol
-            className="space-y-3"
-            aria-live="polite"
-            aria-label="生成阶段列表"
-          >
-            {STAGES.map((stage, idx) => (
-              <StageRow
-                key={stage.id}
-                index={idx + 1}
-                label={stage.label}
-                hint={stage.hint}
-                state={stages[stage.id]}
-              />
-            ))}
-          </ol>
+          <BatchGeneratingProgress jobs={jobs} />
         </section>
 
-        {bodyPreview && (
-          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">
-                正文预览(流式)
-              </h2>
-              <span className="text-xs text-slate-400">
-                {bodyPreview.length} 字
-              </span>
-            </div>
-            <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-slate-50 p-4 text-sm leading-7 text-slate-800">
-              {bodyPreview}
-            </pre>
-          </section>
-        )}
-
-        {factcheckWarning && !fatalError && (
-          <section className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-5">
-            <AlertTriangle
-              className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600"
-              aria-hidden="true"
-            />
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-amber-800">
-                事实核查警告(不阻塞发布,建议人工复核)
+        {allDone && !hasFailures && (
+          <section className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+            <Sparkles className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-800">
+                全部 {doneCount} 篇文章生成完成
               </p>
-              <p className="text-sm text-amber-700">{factcheckWarning}</p>
+              <p className="text-xs text-emerald-700">
+                即将跳转到 Dashboard,你可以在那里挑选和编辑文章
+              </p>
             </div>
           </section>
         )}
 
-        {fatalError && (
-          <section
-            role="alert"
-            className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-5"
-          >
+        {allDone && hasFailures && (
+          <section className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-5">
             <div className="flex items-start gap-3">
               <AlertTriangle
-                className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600"
+                className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600"
                 aria-hidden="true"
               />
               <div>
-                <p className="text-sm font-semibold text-red-800">生成失败</p>
-                <p className="text-sm text-red-700">{fatalError}</p>
+                <p className="text-sm font-semibold text-amber-800">
+                  {doneCount}/{jobCount} 篇完成,部分失败
+                </p>
+                <p className="text-xs text-amber-700">
+                  成功的文章已保存到草稿箱。你可以重试或返回 Dashboard 查看已生成的文章。
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={retry}
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-red-600 px-4 text-xs font-medium text-white shadow-sm transition-colors hover:bg-red-700"
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-amber-600 px-4 text-xs font-medium text-white shadow-sm transition-colors hover:bg-amber-700"
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                从头重新生成
+                全部重试
               </button>
               <button
                 type="button"
-                onClick={cancelAndBack}
+                onClick={() => router.push("/")}
                 className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
               >
-                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                取消返回 Wizard
+                返回 Dashboard
               </button>
             </div>
           </section>
+        )}
+
+        {!allDone && (
+          <div className="flex justify-start">
+            <button
+              type="button"
+              onClick={cancelAndBack}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              取消返回 Wizard
+            </button>
+          </div>
         )}
       </div>
     </main>
   );
 }
 
-interface StageRowProps {
-  index: number;
-  label: string;
-  hint: string;
-  state: StageState;
-}
-
-function StageRow({ index, label, hint, state }: StageRowProps) {
-  return (
-    <li className="flex items-center gap-4">
-      <div className="relative flex h-8 w-8 flex-shrink-0 items-center justify-center">
-        {state.status === "pending" && (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-400">
-            {index}
-          </span>
-        )}
-        {state.status === "running" && (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white ring-4 ring-blue-100">
-            <Loader2
-              className="h-4 w-4 animate-spin"
-              aria-hidden="true"
-            />
-            <span
-              className="absolute inset-0 animate-ping rounded-full bg-blue-400 opacity-30"
-              aria-hidden="true"
-            />
-          </span>
-        )}
-        {state.status === "done" && (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white ring-4 ring-emerald-100">
-            <Check className="h-4 w-4" aria-hidden="true" />
-          </span>
-        )}
-        {state.status === "failed" && (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white ring-4 ring-red-100">
-            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-          </span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <p
-            className={cn(
-              "text-sm font-medium",
-              state.status === "pending" && "text-slate-400",
-              state.status === "running" && "text-slate-900",
-              state.status === "done" && "text-slate-700",
-              state.status === "failed" && "text-red-700"
-            )}
-          >
-            {label}
-          </p>
-          {state.elapsedMs !== undefined && (
-            <span className="text-xs text-slate-400">
-              {(state.elapsedMs / 1000).toFixed(1)}s
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 text-xs text-slate-500">
-          {state.error ?? hint}
-        </p>
-      </div>
-    </li>
-  );
-}
-
 function markdownToHtml(md: string): string {
-  // Minimal markdown → HTML for Phase 3b. Phase 4+5 will replace with TipTap.
   return md
     .split(/\n{2,}/)
     .map((block) => {

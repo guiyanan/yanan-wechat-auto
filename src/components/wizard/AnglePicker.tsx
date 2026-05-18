@@ -8,32 +8,37 @@ const MAX_CUSTOM_LENGTH = 200;
 
 interface AnglePickerProps {
   angles: Angle[];
-  selectedId: string | null;
+  selectedIds: string[];
   customAngle: string;
-  onSelect: (id: string) => void;
+  onToggle: (id: string) => void;
   onCustomChange: (text: string) => void;
 }
 
 export function AnglePicker({
   angles,
-  selectedId,
+  selectedIds,
   customAngle,
-  onSelect,
+  onToggle,
   onCustomChange,
 }: AnglePickerProps) {
   const hasCustom = customAngle.trim().length > 0;
 
   return (
     <div className="space-y-5">
+      <p className="text-sm text-slate-500">
+        勾选一个或多个角度。每勾一个,生成时会按「角度 × 风格」组合各产出一篇独立文章。
+      </p>
+
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {angles.map((angle) => {
-          const selected = selectedId === angle.id;
+          const selected = selectedIds.includes(angle.id);
           return (
             <li key={angle.id}>
               <button
                 type="button"
-                onClick={() => onSelect(angle.id)}
-                aria-pressed={selected}
+                onClick={() => onToggle(angle.id)}
+                role="checkbox"
+                aria-checked={selected}
                 className={cn(
                   "group relative flex w-full items-start gap-3 rounded-xl border bg-white p-4 text-left shadow-sm transition-all",
                   selected
@@ -44,18 +49,14 @@ export function AnglePicker({
               >
                 <span
                   className={cn(
-                    "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-semibold",
+                    "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border-2 text-xs font-semibold transition-colors",
                     selected
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-100 text-slate-500"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-300 bg-white text-slate-400"
                   )}
                   aria-hidden="true"
                 >
-                  {selected ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    String(angle.order).padStart(2, "0")
-                  )}
+                  {selected ? <Check className="h-3.5 w-3.5" /> : null}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-900">
@@ -106,8 +107,8 @@ export function AnglePicker({
         <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400">
           <span>
             {hasCustom
-              ? "自定义角度将覆盖上面的预置选择"
-              : "留空则使用上面选中的预置角度"}
+              ? "自定义角度将覆盖上面的预置选择,且批次只产出 1 篇"
+              : "留空则使用上面勾选的预置角度"}
           </span>
           <span
             className={cn(

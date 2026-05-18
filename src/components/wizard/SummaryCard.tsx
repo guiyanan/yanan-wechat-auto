@@ -1,47 +1,30 @@
 "use client";
 
-import { FileText, Lightbulb, PenLine } from "lucide-react";
+import { FileText, Lightbulb, PenLine, Layers } from "lucide-react";
 import type { Product, WritingStyle, Angle } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface SummaryCardProps {
   product: Product | null;
-  angle: Angle | null;
+  angles: Angle[];
   customAngle: string;
-  style: WritingStyle | null;
+  styles: WritingStyle[];
 }
 
 export function SummaryCard({
   product,
-  angle,
+  angles,
   customAngle,
-  style,
+  styles,
 }: SummaryCardProps) {
-  const items: Array<{
-    label: string;
-    icon: typeof FileText;
-    value: string | null;
-    hint?: string;
-  }> = [
-    {
-      label: "产品",
-      icon: FileText,
-      value: product?.name ?? null,
-      hint: product?.description,
-    },
-    {
-      label: "角度",
-      icon: Lightbulb,
-      value: angle?.name ?? (customAngle.trim() ? "自定义角度" : null),
-      hint: angle?.exampleTitle ?? (customAngle.trim() || undefined),
-    },
-    {
-      label: "风格",
-      icon: PenLine,
-      value: style?.name ?? null,
-      hint: style?.tags.join(" · "),
-    },
-  ];
+  const hasCustom = customAngle.trim().length > 0;
+  const hasAngle = angles.length > 0 || hasCustom;
+  const hasStyle = styles.length > 0;
+
+  // Batch size: each angle × each style produces one article. customAngle
+  // counts as a single angle slot.
+  const angleCount = hasCustom ? 1 : angles.length;
+  const batchCount = angleCount * styles.length;
 
   return (
     <aside className="sticky top-20 w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -49,44 +32,141 @@ export function SummaryCard({
         当前选择
       </h2>
       <ul className="mt-4 space-y-4">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const filled = !!item.value;
-          return (
-            <li key={item.label}>
-              <div className="flex items-start gap-3">
-                <div
-                  className={cn(
-                    "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg",
-                    filled
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-slate-100 text-slate-400"
-                  )}
-                >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                    {item.label}
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-0.5 truncate text-sm font-medium",
-                      filled ? "text-slate-900" : "text-slate-400"
-                    )}
-                  >
-                    {item.value ?? "未选择"}
-                  </p>
-                  {filled && item.hint && (
-                    <p className="mt-0.5 truncate text-xs text-slate-500">
-                      {item.hint}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </li>
-          );
-        })}
+        {/* Product */}
+        <li>
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg",
+                product
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-slate-100 text-slate-400"
+              )}
+            >
+              <FileText className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                产品
+              </p>
+              <p
+                className={cn(
+                  "mt-0.5 truncate text-sm font-medium",
+                  product ? "text-slate-900" : "text-slate-400"
+                )}
+              >
+                {product?.name ?? "未选择"}
+              </p>
+              {product && (
+                <p className="mt-0.5 truncate text-xs text-slate-500">
+                  {product.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </li>
+
+        {/* Angles (multi) */}
+        <li>
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg",
+                hasAngle
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-slate-100 text-slate-400"
+              )}
+            >
+              <Lightbulb className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                角度{hasAngle && angles.length > 0 ? ` · ${angles.length}` : ""}
+              </p>
+              {!hasAngle && (
+                <p className="mt-0.5 text-sm font-medium text-slate-400">
+                  未选择
+                </p>
+              )}
+              {hasCustom && (
+                <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-900">
+                  自定义:{customAngle.trim()}
+                </p>
+              )}
+              {!hasCustom && angles.length > 0 && (
+                <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                  {angles.map((a) => (
+                    <li
+                      key={a.id}
+                      className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
+                    >
+                      {a.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </li>
+
+        {/* Styles (multi) */}
+        <li>
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg",
+                hasStyle
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-slate-100 text-slate-400"
+              )}
+            >
+              <PenLine className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                风格{hasStyle ? ` · ${styles.length}` : ""}
+              </p>
+              {!hasStyle && (
+                <p className="mt-0.5 text-sm font-medium text-slate-400">
+                  未选择
+                </p>
+              )}
+              {hasStyle && (
+                <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                  {styles.map((s) => (
+                    <li
+                      key={s.id}
+                      className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
+                    >
+                      {s.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </li>
+
+        {/* Batch preview — only shown once both angle & style are picked */}
+        {batchCount > 0 && (
+          <li className="rounded-lg bg-emerald-50 p-3">
+            <div className="flex items-center gap-2">
+              <Layers
+                className="h-4 w-4 text-emerald-600"
+                aria-hidden="true"
+              />
+              <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-700">
+                本次批次
+              </p>
+            </div>
+            <p className="mt-1 text-sm font-medium text-emerald-900">
+              将生成 {batchCount} 篇独立文章
+            </p>
+            <p className="mt-0.5 text-xs text-emerald-700">
+              {angleCount} 角度 × {styles.length} 风格
+            </p>
+          </li>
+        )}
       </ul>
     </aside>
   );

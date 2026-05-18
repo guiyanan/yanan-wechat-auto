@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { humanize, sseFromGenerator } from "@/lib/qwen";
+import { ARTICLE_TYPES, type ArticleType } from "@/lib/articleType";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ interface Req {
   text: string;
   styleName: string;
   styleProfile: string;
+  articleType: ArticleType;
 }
 
 export async function POST(req: NextRequest) {
@@ -20,6 +22,12 @@ export async function POST(req: NextRequest) {
   }
   if (!input.text?.trim()) {
     return new Response("text required", { status: 400 });
+  }
+  if (!input.articleType || !ARTICLE_TYPES.includes(input.articleType)) {
+    return new Response(
+      `articleType required (one of: ${ARTICLE_TYPES.join(" | ")})`,
+      { status: 400 }
+    );
   }
 
   const gen = humanize({ ...input, signal: req.signal });

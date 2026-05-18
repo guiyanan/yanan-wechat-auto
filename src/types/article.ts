@@ -29,6 +29,8 @@ export interface ComplianceResult {
   factCheckWarning?: string;
 }
 
+import type { WechatTheme } from "@/lib/wechatThemes";
+
 export interface Article {
   id: string;
   productId: string;
@@ -36,6 +38,7 @@ export interface Article {
   customAngle?: string;
   styleId: string;
   accountId?: string;
+  exportTheme?: WechatTheme;
   status: ArticleStatus;
   title: string;
   titleCandidates: string[];

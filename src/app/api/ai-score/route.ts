@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { hashString, seededInt } from "@/lib/seed";
+import { scoreMock } from "@/lib/aiScoreMock";
+import { scoreText, type HeuristicBreakdown } from "@/lib/aiScoreHeuristic";
 
 export const runtime = "nodejs";
 
@@ -11,16 +12,27 @@ interface Req {
   iteration?: number;
 }
 
+export type AiScoreProvider = "mock" | "heuristic" | "zhuque";
+
+interface AiScoreSuccess {
+  score: number;
+  drop?: number;
+  note?: string;
+  breakdown?: HeuristicBreakdown;
+  provider: AiScoreProvider;
+}
+
 /**
- * Mock 朱雀 AI score endpoint (PRD 6.3.4).
+ * AI-likeness score endpoint with provider abstraction.
  *
- * Deterministic by design: same articleId + iteration always yields the same
- * score. This lets demos reproduce exactly. Real 朱雀 integration is P1.
+ *   AI_SCORE_PROVIDER=heuristic (default) — local six-dimension heuristic
+ *   AI_SCORE_PROVIDER=mock                 — articleId-seeded deterministic mock
+ *                                            (pinned by tests that need stable numbers)
+ *   AI_SCORE_PROVIDER=zhuque               — placeholder, returns 501 Not Implemented
  *
- * Contract:
- *   - first check (afterHumanize=false): score in 28-45, seeded by articleId
- *   - after humanize (afterHumanize=true): drops 5-10 points from previousScore,
- *     seeded by `${articleId}:humanize:${iteration}`
+ * Default flipped from mock to heuristic so the Editor + auto-humanize loop
+ * see real signal in dev/prod. Tests that depend on the seeded mock must
+ * pin the provider via vi.stubEnv("AI_SCORE_PROVIDER", "mock").
  */
 export async function POST(req: NextRequest) {
   let input: Req;
@@ -29,33 +41,54 @@ export async function POST(req: NextRequest) {
   } catch {
     return new Response("invalid json", { status: 400 });
   }
-  if (!input.text?.trim()) {
-    return Response.json({ score: 0, note: "empty text" });
+
+  const provider = resolveProvider();
+
+  if (provider === "zhuque") {
+    return new Response("zhuque provider not implemented", { status: 501 });
   }
 
-  // Simulate network jitter — NOT seeded (real API has real latency)
-  await new Promise((r) => setTimeout(r, 250));
-
-  const previous = Number.isFinite(input.previousScore)
-    ? Math.max(0, Math.min(100, input.previousScore as number))
-    : null;
-
-  const seedBase = input.articleId ?? hashFromText(input.text);
-
-  if (input.afterHumanize && previous !== null) {
-    const iter = input.iteration ?? 1;
-    const drop = seededInt(`${seedBase}:humanize:${iter}`, 5, 10);
-    const next = Math.max(12, previous - drop);
-    return Response.json({ score: next, drop });
+  if (provider === "mock") {
+    return Response.json(runMock(input));
   }
 
-  // Fresh check: 28-45 inclusive, deterministic per article
-  const score = seededInt(`${seedBase}:fresh`, 28, 45);
-  return Response.json({ score });
+  return Response.json(runHeuristic(input));
 }
 
-// Fallback seed when articleId is not provided — hash the text so callers
-// who forget to send articleId still get reproducibility for identical text.
-function hashFromText(text: string): string {
-  return `text-${hashString(text.slice(0, 200)).toString(16)}`;
+function resolveProvider(): AiScoreProvider {
+  const raw = (process.env.AI_SCORE_PROVIDER ?? "heuristic").toLowerCase();
+  if (raw === "mock" || raw === "heuristic" || raw === "zhuque") return raw;
+  return "heuristic";
+}
+
+function runMock(input: Req): AiScoreSuccess {
+  const out = scoreMock({
+    text: input.text,
+    articleId: input.articleId,
+    previousScore: input.previousScore,
+    afterHumanize: input.afterHumanize,
+    iteration: input.iteration,
+  });
+  return { ...out, provider: "mock" };
+}
+
+function runHeuristic(input: Req): AiScoreSuccess {
+  if (!input.text?.trim()) {
+    return { score: 0, note: "empty text", provider: "heuristic" };
+  }
+  const breakdown = scoreText(input.text);
+
+  // Mirror the mock contract: when called with afterHumanize + previousScore,
+  // surface the drop so the UI can render the same "AI 浓度 -N" toast.
+  const drop =
+    input.afterHumanize && typeof input.previousScore === "number"
+      ? Math.max(0, input.previousScore - breakdown.score)
+      : undefined;
+
+  return {
+    score: breakdown.score,
+    drop,
+    breakdown,
+    provider: "heuristic",
+  };
 }

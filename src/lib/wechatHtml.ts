@@ -5,6 +5,8 @@ import {
   AIGC_EXPLICIT_NOTICE_HTML,
   type AigcMetadata,
 } from "./aigcMeta";
+import { type WechatTheme, getThemeCss } from "./wechatThemes";
+import { decorateHtml } from "./wechatDecorate";
 
 /**
  * Phase 6 will call exportWechatHtml() to produce a copy-pasteable HTML
@@ -35,6 +37,10 @@ export interface ExportWechatHtmlArgs {
    * If omitted, a conservative default style is used.
    */
   css?: string;
+  /** Named theme — overrides `css` when provided. */
+  theme?: WechatTheme;
+  /** Run decoration pass (emoji lists, callout promotion). Default false. */
+  decorate?: boolean;
 }
 
 const DEFAULT_CSS = `
@@ -64,7 +70,10 @@ export function exportWechatHtml(args: ExportWechatHtmlArgs): string {
   const meta = args.meta ?? buildAigcMetadata();
   const title = escapeHtml(args.title);
   const notice = args.addExplicitNotice ? AIGC_EXPLICIT_NOTICE_HTML : "";
-  const css = args.css ?? DEFAULT_CSS;
+  const css = args.theme ? getThemeCss(args.theme) : (args.css ?? DEFAULT_CSS);
+  const bodyContent = args.decorate
+    ? decorateHtml(args.bodyHtml, { theme: args.theme ?? "minimal" })
+    : args.bodyHtml;
 
   const cover = args.coverUrl
     ? `<img class="joto-cover" src="${escapeAttr(args.coverUrl)}" alt="${title}">`
@@ -93,7 +102,7 @@ ${aigcMetaTag(meta)}
 ${cover}
 <h1>${title}</h1>
 ${byline}
-${args.bodyHtml}
+${bodyContent}
 ${notice}
 </body>
 </html>`;

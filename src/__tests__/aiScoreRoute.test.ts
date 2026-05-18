@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/ai-score/route";
 
 function makeReq(body: unknown): Request {
@@ -9,7 +9,15 @@ function makeReq(body: unknown): Request {
   });
 }
 
-describe("/api/ai-score (seeded mock)", () => {
+describe("/api/ai-score (seeded mock provider)", () => {
+  // Lock to mock so this suite tests mock semantics regardless of env default.
+  beforeEach(() => {
+    vi.stubEnv("AI_SCORE_PROVIDER", "mock");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("returns same score for same articleId on repeated calls", async () => {
     const a = (await (
       await POST(
@@ -28,7 +36,6 @@ describe("/api/ai-score (seeded mock)", () => {
 
   it("different articleIds produce different scores usually", async () => {
     const scores = new Set<number>();
-    // Run in parallel so the 250ms artificial jitter doesn't serialize
     const results = await Promise.all(
       Array.from({ length: 20 }, (_, i) =>
         POST(makeReq({ text: "x", articleId: `art-${i}` }) as never).then(
@@ -74,5 +81,45 @@ describe("/api/ai-score (seeded mock)", () => {
     const res = await POST(makeReq({ text: "" }) as never);
     const json = (await res.json()) as { score: number };
     expect(json.score).toBe(0);
+  });
+
+  it("tags response with provider=mock", async () => {
+    const res = await POST(
+      makeReq({ text: "body", articleId: "art-tag" }) as never
+    );
+    const json = (await res.json()) as { provider: string };
+    expect(json.provider).toBe("mock");
+  });
+});
+
+describe("/api/ai-score (provider routing)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("defaults to heuristic when env is unset", async () => {
+    vi.stubEnv("AI_SCORE_PROVIDER", "");
+    const res = await POST(
+      makeReq({
+        text: "首先我们要明确,在当今数字化时代,赋能闭环是关键抓手。其次,综上所述,毋庸置疑这是必由之路。",
+      }) as never
+    );
+    const json = (await res.json()) as { score: number; provider: string };
+    expect(json.provider).toBe("heuristic");
+    // Cliché-laden text should score high.
+    expect(json.score).toBeGreaterThan(40);
+  });
+
+  it("returns 501 for zhuque provider", async () => {
+    vi.stubEnv("AI_SCORE_PROVIDER", "zhuque");
+    const res = await POST(makeReq({ text: "anything" }) as never);
+    expect(res.status).toBe(501);
+  });
+
+  it("falls back to heuristic for unknown provider value", async () => {
+    vi.stubEnv("AI_SCORE_PROVIDER", "totally-bogus");
+    const res = await POST(makeReq({ text: "我用了三周,装了 47 个客户。" }) as never);
+    const json = (await res.json()) as { provider: string };
+    expect(json.provider).toBe("heuristic");
   });
 });

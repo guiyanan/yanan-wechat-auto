@@ -1,92 +1,32 @@
 [
   {
-    "id": "angle-review",
+    "id": "angle-promo",
     "order": 1,
-    "name": "产品测评",
-    "sceneDesc": "新品上市、功能横评",
-    "exampleTitle": "Loop vs UiPath · 5 个维度实测",
-    "promptInstruction": "围绕产品核心能力,从 5 个维度做客观实测对比,突出差异化优势,结构清晰可量化。",
+    "name": "产品推广文",
+    "category": "产品推广",
+    "sceneDesc": "效益展示 + 使用场景",
+    "exampleTitle": "把对账时间从 4 小时压到 20 分钟,我们做对了三件事",
+    "promptInstruction": "面向业务决策层和运营人员,先用具体效益数字开场作为钩子,正中段说明落地步骤,结尾对比传统做法突出差异化优势。语气专业克制,不口语化,不过度学术。",
     "scope": "platform"
   },
   {
-    "id": "angle-case",
+    "id": "angle-compare",
     "order": 2,
-    "name": "客户案例",
-    "sceneDesc": "真实成功故事 + 数据",
-    "exampleTitle": "我们用三周把 UiPath 项目搬到 Loop",
-    "promptInstruction": "以真实客户视角讲述迁移/落地过程,包含背景、挑战、方案、成果数据,避免空洞营销语言。",
+    "name": "深度对比文",
+    "category": "场景推广",
+    "sceneDesc": "竞品对比 + 技术差异分析",
+    "exampleTitle": "Loop 与传统 RPA 的三层架构差异:为什么我们选浏览器原生 Agent",
+    "promptInstruction": "面向 IT 部门和技术评估者,开篇直击选型场景的真实痛点作为钩子,中段说明技术使用路径,结尾用结构化对比展开技术差异(架构/部署/运维/总拥有成本)。客观、数据驱动,不带情绪。",
     "scope": "platform"
   },
   {
-    "id": "angle-feature",
+    "id": "angle-summit",
     "order": 3,
-    "name": "功能解析",
-    "sceneDesc": "拆解某个具体能力",
-    "exampleTitle": "Loop 的录制回放究竟怎么实现的",
-    "promptInstruction": "选取产品的一个具体能力,从原理、实现、场景、限制四个维度拆解,技术深度适中,面向产品负责人。",
-    "scope": "platform"
-  },
-  {
-    "id": "angle-versus",
-    "order": 4,
-    "name": "对标竞品",
-    "sceneDesc": "和某个具体对手对比",
-    "exampleTitle": "Loop 和 UiPath 最大的三点不同",
-    "promptInstruction": "明确指出 3 个关键差异点,每个差异点用「数据+场景」的结构论证,避免贬低竞品语言,强调选择逻辑。",
-    "scope": "platform"
-  },
-  {
-    "id": "angle-painpoint",
-    "order": 5,
-    "name": "痛点切入",
-    "sceneDesc": "从行业问题引出方案",
-    "exampleTitle": "为什么传统 RPA 项目总是死在交付环节",
-    "promptInstruction": "开篇从行业典型痛点切入,引发共鸣,再在中段自然导出产品能力作为解法,避免硬广感。",
-    "scope": "platform"
-  },
-  {
-    "id": "angle-industry",
-    "order": 6,
-    "name": "行业观察",
-    "sceneDesc": "大趋势、思想领导力",
-    "exampleTitle": "2026 年企业 RPA 市场的三个信号",
-    "promptInstruction": "基于公开数据和行业观察,提炼 3 个趋势信号,给出论据和影响预判,产品只在结尾作为趋势受益者提及。",
-    "scope": "platform"
-  },
-  {
-    "id": "angle-tutorial",
-    "order": 7,
-    "name": "上手教程",
-    "sceneDesc": "step by step 实操",
-    "exampleTitle": "第一次用 Loop 的 10 分钟",
-    "promptInstruction": "用真实体验叙事式写一个 10-20 分钟的上手过程,含截图提示、注意事项、常见问题,操作步骤编号清晰。",
-    "scope": "platform"
-  },
-  {
-    "id": "angle-launch",
-    "order": 8,
-    "name": "新功能发布",
-    "sceneDesc": "新版本 / 新能力官宣",
-    "exampleTitle": "Loop v2.3 发布:三个你该关注的能力",
-    "promptInstruction": "介绍 3 个核心新能力,每个新能力给出解决的问题、用法示例、适用场景,语气专业克制。",
-    "scope": "platform"
-  },
-  {
-    "id": "angle-team",
-    "order": 9,
-    "name": "团队思考",
-    "sceneDesc": "我们为什么这么做",
-    "exampleTitle": "我们为什么不再接 RPA 项目了",
-    "promptInstruction": "以团队一人称「我们」视角讲一个重要产品/业务决策的来龙去脉,有矛盾有反思,真实可信。",
-    "scope": "platform"
-  },
-  {
-    "id": "angle-report",
-    "order": 10,
-    "name": "数据报告",
-    "sceneDesc": "调研 + 数据驱动",
-    "exampleTitle": "100 家企业 RPA 使用现状调查",
-    "promptInstruction": "基于调研数据(可假设)呈现 5-8 个关键发现,每个发现配一个数字指标 + 简短解读,风格偏严肃报告体。",
+    "name": "活动/峰会文",
+    "category": "峰会消息",
+    "sceneDesc": "行业背景 + 产品定位",
+    "exampleTitle": "在 2026 智能办公峰会上,我们看到了下一代企业自动化的轮廓",
+    "promptInstruction": "面向会议受众和行业关注者,开篇用峰会/沙龙现场场景或行业宏观信号作为钩子,中段简洁说明产品定位与使用方式,结尾对比行业方案突出我们的差异化定位。第三人称客观叙事。",
     "scope": "platform"
   }
 ]
