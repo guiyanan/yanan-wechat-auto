@@ -216,4 +216,43 @@ describe("articleStore", () => {
     // batchId is preserved — article remains visible in batch preview as "已入库"
     expect(useArticleStore.getState().drafts[a.id].batchId).toBe("batch-X");
   });
+
+  it("promoteToDashboardDrafts moves selected batch articles into dashboard drafts only", () => {
+    const selected = useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+      batchId: "batch-promote",
+      stage: "batch",
+    });
+    const unselected = useArticleStore.getState().createDraft({
+      productId: "p",
+      styleId: "s",
+      batchId: "batch-promote",
+      stage: "batch",
+    });
+    useArticleStore.getState().patch(selected.id, {
+      title: "要进草稿箱的文章",
+      contentHtml: "<p>正文</p>",
+      humanizeMeta: { status: "passed" },
+    });
+    useArticleStore.getState().patch(unselected.id, {
+      title: "仍留在批次里的文章",
+      contentHtml: "<p>正文</p>",
+      humanizeMeta: { status: "passed" },
+    });
+
+    const promoted = useArticleStore.getState().promoteToDashboardDrafts([selected.id]);
+
+    expect(promoted).toBe(1);
+    expect(useArticleStore.getState().drafts[selected.id]).toMatchObject({
+      stage: "main",
+      status: "draft",
+      batchId: "batch-promote",
+      title: "要进草稿箱的文章",
+    });
+    expect(useArticleStore.getState().drafts[unselected.id]).toMatchObject({
+      stage: "batch",
+      status: "draft",
+    });
+  });
 });

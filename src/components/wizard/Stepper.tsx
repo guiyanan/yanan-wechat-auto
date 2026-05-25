@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type StepKey = "product" | "angle" | "style" | "generating";
+export type StepKey = "product" | "generating" | "batch";
 
 export interface StepDescriptor {
   key: StepKey;
@@ -11,9 +11,8 @@ export interface StepDescriptor {
 
 export const WIZARD_STEPS: StepDescriptor[] = [
   { key: "product", label: "选产品", order: 1 },
-  { key: "angle", label: "选角度", order: 2 },
-  { key: "style", label: "选风格", order: 3 },
-  { key: "generating", label: "生成", order: 4 },
+  { key: "generating", label: "生成", order: 2 },
+  { key: "batch", label: "批次预览", order: 3 },
 ];
 
 interface StepperProps {
@@ -23,9 +22,8 @@ interface StepperProps {
 
 const ORDER: Record<StepKey, number> = {
   product: 1,
-  angle: 2,
-  style: 3,
-  generating: 4,
+  generating: 2,
+  batch: 3,
 };
 
 export function Stepper({ current, completedThrough }: StepperProps) {

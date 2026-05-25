@@ -17,11 +17,11 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const meta = STATUS_META[status];
   const className = cn(
-    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
+    "inline-flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1 text-xs font-medium transition-all",
     meta.bgColor,
     meta.textColor,
-    interactive && "cursor-pointer hover:ring-2 hover:ring-offset-1",
-    active && "ring-2 ring-offset-1 ring-blue-400"
+    interactive && "cursor-pointer hover:border-slate-300 hover:bg-white",
+    active && "border-[#0071e3] bg-white text-[#0071e3]"
   );
 
   const content = (

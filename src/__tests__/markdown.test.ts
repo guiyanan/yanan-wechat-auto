@@ -47,6 +47,12 @@ describe("markdownToHtml · inline emphasis", () => {
     const out = markdownToHtml("第一段 **没闭合\n\n第二段");
     expect(out).not.toContain("<strong>没闭合\n\n第二段</strong>");
   });
+  it("strips dangling double-star markers so raw markdown does not leak", () => {
+    const out = markdownToHtml("**3分钟，从灵感到可交付文件。\n\n不用再输一遍 15cm”。 **");
+    expect(out).not.toContain("**");
+    expect(out).toContain("3分钟");
+    expect(out).toContain("15cm");
+  });
 });
 
 describe("markdownToHtml · unordered lists", () => {

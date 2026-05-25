@@ -25,7 +25,7 @@ describe("/api/humanize/pipeline · validation", () => {
 
   it("returns 400 when text is missing", async () => {
     const res = await POST(
-      makeReq({ articleType: "产品推广", styleName: "x", styleProfile: "y" }) as never
+      makeReq({ articleType: "产品介绍", styleName: "x", styleProfile: "y" }) as never
     );
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("text required");
@@ -35,7 +35,7 @@ describe("/api/humanize/pipeline · validation", () => {
     const res = await POST(
       makeReq({
         text: "   \n   ",
-        articleType: "产品推广",
+        articleType: "产品介绍",
         styleName: "x",
         styleProfile: "y",
       }) as never
@@ -67,24 +67,17 @@ describe("/api/humanize/pipeline · validation", () => {
     expect(res.status).toBe(400);
   });
 
-  it("degrades gracefully when no DASHSCOPE_API_KEY (skip L1, still run L2 + L3)", async () => {
-    // Without a key, Qwen humanize throws QwenAuthError; the route is
-    // expected to catch it per-section and return the original text
-    // after L2 post-processing + L3 scoring. End result: HTTP 200 with
-    // a valid pipeline payload, not a 500 that breaks the whole batch.
+  it("returns a clear error when no DASHSCOPE_API_KEY instead of fake-passing humanize", async () => {
     const res = await POST(
       makeReq({
         text: "## 测试\n\n这是一段需要 humanize 的中文正文。",
-        articleType: "产品推广",
+        articleType: "产品介绍",
         styleName: "默认",
         styleProfile: "",
       }) as never
     );
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toHaveProperty("text");
-    expect(json).toHaveProperty("scoreBreakdown");
-    expect(json).toHaveProperty("totalRounds");
+    expect(res.status).toBe(401);
+    expect(await res.text()).toContain("DASHSCOPE_API_KEY");
   });
 
   it("response shape on success contains text + scoreBreakdown + totalRounds", async () => {
@@ -109,6 +102,19 @@ describe("/api/humanize/pipeline · validation", () => {
             total: 18,
           },
           totalRounds: 1,
+          beforeScoreBreakdown: {
+            phraseDensity: 1,
+            sentenceUniformity: 2,
+            repeatedOpeners: 0,
+            passiveFiller: 0,
+            corporateCliche: 0,
+            templateStructure: 0,
+            unsupportedFactRisk: 0,
+            total: 3,
+          },
+          similarity: 0.45,
+          mode: "two-pass-strong",
+          passed: true,
         })),
         // buildQwenHumanizeFn returns a no-op humanizer since pipeline is mocked
         buildQwenHumanizeFn: vi.fn(() => async (t: string) => t),
@@ -120,7 +126,7 @@ describe("/api/humanize/pipeline · validation", () => {
     const res = await PostMocked(
       makeReq({
         text: "## 段\n\n正文内容。",
-        articleType: "产品推广",
+        articleType: "产品介绍",
         styleName: "默认",
         styleProfile: "",
       }) as never
@@ -129,6 +135,10 @@ describe("/api/humanize/pipeline · validation", () => {
     const json = await res.json();
     expect(json).toHaveProperty("text");
     expect(json).toHaveProperty("scoreBreakdown");
+    expect(json).toHaveProperty("beforeScoreBreakdown");
+    expect(json).toHaveProperty("similarity");
+    expect(json).toHaveProperty("mode");
+    expect(json).toHaveProperty("passed");
     expect(json).toHaveProperty("totalRounds");
     expect(typeof json.text).toBe("string");
     expect(json.scoreBreakdown.total).toBe(18);

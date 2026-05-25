@@ -1,9 +1,10 @@
-export type WechatTheme = "minimal" | "polished" | "vibrant";
+export type WechatTheme = "minimal" | "polished" | "vibrant" | "joto";
 
 export const WECHAT_THEME_LABELS: Record<WechatTheme, string> = {
   minimal: "简约白",
   polished: "商务蓝",
   vibrant: "活力橙",
+  joto: "JOTO 公众号",
 };
 
 /**
@@ -81,6 +82,20 @@ export const THEME_PALETTES: Record<WechatTheme, ThemePalette> = {
     quoteBorder: "#DE7356",
     quoteText: "#7f4b1e",
   },
+  joto: {
+    accent: "#1268FF",
+    accentLight: "#EAF2FF",
+    accentEnd: "#5B8CFF",
+    highlightBg: "rgba(18,104,255,0.12)",
+    highlightText: "#1268FF",
+    text: "#5F5F5F",
+    textMuted: "#8A8A8A",
+    titleColor: "#1F1F1F",
+    subtitleColor: "#4A4A4A",
+    quoteBg: "#F6F9FF",
+    quoteBorder: "#1268FF",
+    quoteText: "#4A4A4A",
+  },
 };
 
 const SHARED_BASE = `
@@ -135,6 +150,25 @@ h3 { font-size: 17px; margin: 22px 0 10px; color: #DE7356; font-weight: 800; pad
 blockquote { border-left: 4px solid #DE7356; padding: 12px 16px; margin: 16px 0; color: #7f4b1e; background-color: #fef9f2; font-style: normal; border-radius: 0 8px 8px 0; }
 hr { border: none; height: 3px; background: linear-gradient(to right, #DE7356, rgba(222,115,86,0.1)); margin: 32px 0; border-radius: 2px; }
 `,
+
+  joto: `
+${SHARED_BASE}
+body { background-color: #FFFFFF; color: #5F5F5F; max-width: 760px; padding: 34px 28px 42px; }
+.joto-article-shell { background-color: #FFFFFF; color: #5F5F5F; }
+h1 { font-size: 28px; margin: 0 0 16px; line-height: 1.35; color: #1F1F1F; font-weight: 900; letter-spacing: 0; }
+.joto-byline { color: #8A8A8A; font-size: 14px; margin: 0 0 38px; }
+h2 { font-size: 18px; margin: 38px 0 18px; color: #4A4A4A; font-weight: 900; letter-spacing: 0; }
+h3 { font-size: 16px; margin: 30px 0 18px; color: #4A4A4A; font-weight: 900; text-align: center; letter-spacing: 0; }
+p { color: #5F5F5F; font-size: 16px; line-height: 2.05; margin: 20px 0; letter-spacing: 0; }
+ul, ol { color: #5F5F5F; margin: 18px 0 20px; padding-left: 26px; }
+li { color: #5F5F5F; font-size: 16px; line-height: 1.95; margin-bottom: 10px; }
+blockquote { border-left: 4px solid #1268FF; padding: 12px 18px; margin: 22px 0; color: #4A4A4A; background-color: #F6F9FF; font-style: normal; border-radius: 0 6px 6px 0; }
+hr { border: none; border-top: 1px solid #E6EAF2; margin: 34px 0; }
+a { color: #1268FF; }
+.joto-cover { border-radius: 0; margin: 28px auto; background-color: #fff; }
+.joto-img-placeholder { min-height: 180px; border: 1px solid #DDE8FF; border-radius: 4px; color: #8A8A8A; background-color: #F7FAFF; }
+.joto-past-articles { margin: 50px 0 28px; color: #6D86B5; }
+`,
 };
 
 /**
@@ -171,11 +205,15 @@ export function defaultThemeForArticleType(
   articleType?: string
 ): WechatTheme {
   switch (articleType) {
+    case "产品介绍":
+    case "产品差异":
+    case "竞品对比":
+    case "时事热点":
     case "产品推广":
-      return "vibrant";
+    case "场景推广":
     case "峰会消息":
-      return "polished";
+      return "joto";
     default:
-      return "minimal";
+      return "joto";
   }
 }

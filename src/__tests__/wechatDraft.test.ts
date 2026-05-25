@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   getAccessToken,
   pushDraft,
+  uploadArticleImage,
+  uploadThumbMaterial,
   clearTokenCache,
+  getOptionalDefaultThumbMediaId,
+  getWechatConfigStatus,
+  describeWechatError,
   WechatConfigError,
   WechatApiError,
 } from "@/lib/wechatDraft";
@@ -17,6 +22,8 @@ describe("wechatDraft", () => {
     mockFetch.mockReset();
     vi.stubEnv("WECHAT_APPID", "wx_test_appid");
     vi.stubEnv("WECHAT_APPSECRET", "test_secret_123");
+    vi.stubEnv("WECHAT_DEFAULT_AUTHOR", "JOTO");
+    vi.stubEnv("WECHAT_DEFAULT_THUMB_MEDIA_ID", "THUMB_MEDIA_123");
   });
 
   afterEach(() => {
@@ -97,6 +104,37 @@ describe("wechatDraft", () => {
     });
   });
 
+  describe("config helpers", () => {
+    it("reports missing required WeChat env fields only", () => {
+      vi.stubEnv("WECHAT_APPID", "");
+      vi.stubEnv("WECHAT_APPSECRET", "");
+      vi.stubEnv("WECHAT_DEFAULT_THUMB_MEDIA_ID", "");
+
+      const status = getWechatConfigStatus();
+      expect(status.ok).toBe(false);
+      expect(status.missing).toEqual([
+        "WECHAT_APPID",
+        "WECHAT_APPSECRET",
+      ]);
+      expect(status.hasDefaultThumbMediaId).toBe(false);
+    });
+
+    it("returns the configured optional default thumb media id", () => {
+      expect(getOptionalDefaultThumbMediaId()).toBe("THUMB_MEDIA_123");
+    });
+
+    it("allows the default thumb media id to be omitted", () => {
+      vi.stubEnv("WECHAT_DEFAULT_THUMB_MEDIA_ID", "");
+      expect(getOptionalDefaultThumbMediaId()).toBeUndefined();
+      expect(getWechatConfigStatus().ok).toBe(true);
+    });
+
+    it("describes common WeChat API errors in Chinese", () => {
+      expect(describeWechatError(40164)).toContain("IP 白名单");
+      expect(describeWechatError(40007)).toContain("media_id 无效");
+    });
+  });
+
   describe("pushDraft", () => {
     beforeEach(() => {
       // Pre-populate token cache so pushDraft doesn't need to fetch token
@@ -173,12 +211,25 @@ describe("wechatDraft", () => {
       expect(result.errcode).toBe(45009);
     });
 
-    it("clears token cache on 40001 (invalid token) error", async () => {
+    it("refreshes token and retries once on 40001 (invalid token) error", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           errcode: 40001,
           errmsg: "invalid credential",
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "NEW_TOKEN",
+          expires_in: 7200,
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          media_id: "DRAFT_AFTER_RETRY",
         }),
       });
 
@@ -187,19 +238,10 @@ describe("wechatDraft", () => {
         content: "<p>Body</p>",
       });
 
-      expect(result.ok).toBe(false);
-
-      // Next getAccessToken call should fetch a new token (cache was cleared)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          access_token: "NEW_TOKEN",
-          expires_in: 7200,
-        }),
-      });
-
-      const newToken = await getAccessToken();
-      expect(newToken).toBe("NEW_TOKEN");
+      expect(result.ok).toBe(true);
+      expect(result.mediaId).toBe("DRAFT_AFTER_RETRY");
+      expect(mockFetch.mock.calls[3][0]).toContain("draft/add");
+      expect(mockFetch.mock.calls[3][0]).toContain("NEW_TOKEN");
     });
 
     it("returns error on HTTP failure", async () => {
@@ -215,6 +257,133 @@ describe("wechatDraft", () => {
 
       expect(result.ok).toBe(false);
       expect(result.error).toContain("HTTP 503");
+    });
+  });
+
+  describe("uploadThumbMaterial", () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "MOCK_TOKEN",
+          expires_in: 7200,
+        }),
+      });
+    });
+
+    it("uploads a generated cover to WeChat permanent thumb material", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          media_id: "THUMB_GENERATED_123",
+          url: "https://mmbiz.qpic.cn/thumb.png",
+        }),
+      });
+
+      const result = await uploadThumbMaterial(
+        new Uint8Array([1, 2, 3]),
+        "cover.png"
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.mediaId).toBe("THUMB_GENERATED_123");
+      expect(mockFetch.mock.calls[1][0]).toContain("material/add_material");
+      expect(mockFetch.mock.calls[1][0]).toContain("type=thumb");
+      expect(mockFetch.mock.calls[1][1].method).toBe("POST");
+      expect(mockFetch.mock.calls[1][1].body).toBeInstanceOf(FormData);
+    });
+
+    it("refreshes token and retries once when cover upload token expires", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errcode: 40001,
+          errmsg: "invalid credential",
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "NEW_TOKEN",
+          expires_in: 7200,
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          media_id: "THUMB_AFTER_RETRY",
+        }),
+      });
+
+      const result = await uploadThumbMaterial(new Uint8Array([1]));
+
+      expect(result.ok).toBe(true);
+      expect(result.mediaId).toBe("THUMB_AFTER_RETRY");
+      expect(mockFetch.mock.calls[3][0]).toContain("material/add_material");
+      expect(mockFetch.mock.calls[3][0]).toContain("NEW_TOKEN");
+    });
+  });
+
+  describe("uploadArticleImage", () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "MOCK_TOKEN",
+          expires_in: 7200,
+        }),
+      });
+    });
+
+    it("uploads an inline article image and returns a WeChat-hosted URL", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          url: "https://mmbiz.qpic.cn/mmbiz_jpg/qr.jpg",
+        }),
+      });
+
+      const result = await uploadArticleImage(
+        new Uint8Array([1, 2, 3]),
+        "qr.jpg",
+        "image/jpeg"
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.url).toBe("https://mmbiz.qpic.cn/mmbiz_jpg/qr.jpg");
+      expect(mockFetch.mock.calls[1][0]).toContain("media/uploadimg");
+      expect(mockFetch.mock.calls[1][1].method).toBe("POST");
+      expect(mockFetch.mock.calls[1][1].body).toBeInstanceOf(FormData);
+    });
+
+    it("refreshes token and retries once when inline image upload token expires", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errcode: 40001,
+          errmsg: "invalid credential",
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "NEW_TOKEN",
+          expires_in: 7200,
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          url: "https://mmbiz.qpic.cn/retry.jpg",
+        }),
+      });
+
+      const result = await uploadArticleImage(new Uint8Array([1]));
+
+      expect(result.ok).toBe(true);
+      expect(result.url).toBe("https://mmbiz.qpic.cn/retry.jpg");
+      expect(mockFetch.mock.calls[3][0]).toContain("media/uploadimg");
+      expect(mockFetch.mock.calls[3][0]).toContain("NEW_TOKEN");
     });
   });
 

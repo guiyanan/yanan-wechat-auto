@@ -261,7 +261,7 @@ describe("qwen · humanize", () => {
       text: "原文",
       styleName: "卡兹克",
       styleProfile: "口语",
-      articleType: "产品推广",
+      articleType: "产品介绍",
       client: fake as unknown as OpenAI,
     })) {
       out.push(d);

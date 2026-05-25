@@ -2,7 +2,16 @@ import { NextRequest } from "next/server";
 import productsData from "@/data/products.json";
 import anglesData from "@/data/angles.json";
 import stylesData from "@/data/styles.json";
-import type { Angle, PipelineStageId, Product, WritingStyle } from "@/types";
+import type {
+  Angle,
+  AngleStrategy,
+  ArticleSourceContext,
+  ContentLength,
+  PipelineStageId,
+  Product,
+  WritingStyle,
+  TopicPlan,
+} from "@/types";
 import {
   completeChat,
   generateTitles,
@@ -16,9 +25,14 @@ import { generateCoverCandidates } from "@/lib/mockCovers";
 import { seededBool } from "@/lib/seed";
 import { inferArticleType } from "@/lib/articleType";
 import {
+  getAngleStrategyInstruction,
+  getContentLengthInstruction,
+} from "@/lib/contentSettings";
+import {
   runHumanizePipeline,
   buildQwenHumanizeFn,
 } from "@/lib/humanize/pipeline";
+import { summarizeProductImageAssets } from "@/lib/productImages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,16 +43,38 @@ const STYLES = stylesData as WritingStyle[];
 
 interface GenerateRequest {
   productId: string;
+  productSnapshot?: Product;
   angleId?: string;
   customAngle?: string;
-  styleId: string;
+  styleId?: string;
+  topicPlan?: TopicPlan;
+  styleOverride?: Pick<WritingStyle, "id" | "name" | "promptProfile" | "sampleText">;
   articleId?: string;
+  sourcePack?: ArticleSourceContext;
+  contentLength?: ContentLength;
+  angleStrategy?: AngleStrategy;
   /**
    * When true, run the humanize pipeline (L1+L2+L3) on the body
    * between the body and titles stages.
    * Default: false (keeps existing behaviour unchanged).
    */
   autoHumanize?: boolean;
+}
+
+function formatSourcePack(sourcePack?: ArticleSourceContext, product?: Product): string {
+  const safeSourcePack = sourcePack ?? {};
+  const rows = [
+    ["产品素材", safeSourcePack.productNotes],
+    ["竞品/传统方案素材", safeSourcePack.competitorNotes],
+    ["热点/行业事件素材", safeSourcePack.trendNotes],
+    ["截图/视频/图片素材", safeSourcePack.imageRefs],
+    ["当前产品真实图片素材库", product ? summarizeProductImageAssets(product) : ""],
+  ]
+    .filter(([, value]) => typeof value === "string" && value.trim())
+    .map(([label, value]) => `【${label}】${String(value).trim()}`);
+  return rows.length > 0
+    ? rows.join("\n")
+    : "未提供补充素材。缺少事实时必须提示需要补充素材,不得编造。";
 }
 
 type StageEvent =
@@ -78,24 +114,44 @@ export async function POST(req: NextRequest) {
     return new Response("invalid json", { status: 400 });
   }
 
-  const product = PRODUCTS.find((p) => p.id === body.productId);
+  const product =
+    body.productSnapshot?.id === body.productId
+      ? body.productSnapshot
+      : PRODUCTS.find((p) => p.id === body.productId);
   if (!product) {
     return new Response(`product not found: ${body.productId}`, { status: 400 });
   }
-  const style = STYLES.find((s) => s.id === body.styleId);
+  const style = body.styleOverride
+    ? {
+        id: body.styleOverride.id,
+        name: body.styleOverride.name,
+        promptProfile: body.styleOverride.promptProfile,
+        sampleText: body.styleOverride.sampleText,
+      }
+    : STYLES.find((s) => s.id === body.styleId);
   if (!style) {
     return new Response(`style not found: ${body.styleId}`, { status: 400 });
   }
   const angleById = ANGLES.find((a) => a.id === body.angleId);
-  const angleName = angleById?.name ?? "自定义角度";
+  const angleName = body.topicPlan?.angleLabel ?? angleById?.name ?? "自定义角度";
   const angleInstruction =
-    angleById?.promptInstruction ?? body.customAngle?.trim() ?? "";
-  if (!angleById && !(body.customAngle && body.customAngle.trim())) {
+    [
+      body.topicPlan?.promptInstruction ??
+        angleById?.promptInstruction ??
+        body.customAngle?.trim() ??
+        "",
+      getAngleStrategyInstruction(body.angleStrategy),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  if (!body.topicPlan && !angleById && !(body.customAngle && body.customAngle.trim())) {
     return new Response("angle or customAngle required", { status: 400 });
   }
 
   const encoder = new TextEncoder();
   const signal = req.signal;
+  const sourcePackText = formatSourcePack(body.sourcePack, product);
+  const lengthInstruction = getContentLengthInstruction(body.contentLength);
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -134,6 +190,8 @@ export async function POST(req: NextRequest) {
                 productDesc: product.description,
                 angle: angleName,
                 angleInstruction,
+                sourcePack: sourcePackText,
+                lengthInstruction,
               }),
             60_000
           );
@@ -157,6 +215,8 @@ export async function POST(req: NextRequest) {
             styleProfile: style.promptProfile,
             styleSample: style.sampleText,
             outline: result.outline,
+            sourcePack: sourcePackText,
+            lengthInstruction,
           });
           for await (const delta of iter) {
             result.body += delta;

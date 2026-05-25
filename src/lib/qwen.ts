@@ -171,6 +171,7 @@ export interface GenerateOutlineArgs {
   productDesc: string;
   angle: string;
   angleInstruction: string;
+  sourcePack?: string;
   client?: OpenAI;
   signal?: AbortSignal;
 }
@@ -181,6 +182,7 @@ export async function generateOutline(args: GenerateOutlineArgs): Promise<string
     productDesc: args.productDesc,
     angle: args.angle,
     angleInstruction: args.angleInstruction,
+    sourcePack: args.sourcePack ?? "",
   });
 }
 
@@ -203,6 +205,7 @@ export async function* generateBody(
     styleProfile: args.styleProfile,
     styleSample: args.styleSample,
     outline: args.outline,
+    sourcePack: args.sourcePack ?? "",
   });
 }
 

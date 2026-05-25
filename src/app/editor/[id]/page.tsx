@@ -5,7 +5,9 @@ import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useArticleStore } from "@/store/articleStore";
+import { useProductStore } from "@/store/productStore";
 import { getAllAccounts, getAllProducts } from "@/lib/articles";
+import { mergeProducts } from "@/lib/productCatalog";
 import anglesData from "@/data/angles.json";
 import stylesData from "@/data/styles.json";
 import type { Angle, Article, WritingStyle } from "@/types";
@@ -83,7 +85,9 @@ function EditorView({
   isReadonly: boolean;
 }) {
   const patch = useArticleStore((s) => s.patch);
-  const products = getAllProducts();
+  const customProducts = useProductStore((s) => s.products);
+  const loadProducts = useProductStore((s) => s.loadFromServer);
+  const products = mergeProducts(getAllProducts(), Object.values(customProducts));
   const product = products.find((p) => p.id === article.productId);
   const angle = ANGLES.find((a) => a.id === article.angleId);
   const style = STYLES.find((s) => s.id === article.styleId);
@@ -121,6 +125,10 @@ function EditorView({
   const [autoLoopIter, setAutoLoopIter] = useState(0);
   const AUTO_LOOP_TARGET = 30;
   const AUTO_LOOP_MAX_ITERS = 3;
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

@@ -4,7 +4,7 @@ import {
   getThemePalette,
 } from "./wechatThemes";
 
-export const LIST_EMOJIS = ["✅", "📌", "💡", "🔹", "⭐"];
+export const LIST_ICON_COUNT = 5;
 
 export const CALLOUT_KEYWORDS = [
   "重点",
@@ -37,8 +37,29 @@ export function decorateHeadings(
   return html.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_match, title: string) => {
     idx++;
     const num = String(idx).padStart(2, "0");
+    if (theme === "joto") {
+      return buildJotoChapter(num, title.trim(), p);
+    }
     return buildSectionBanner(num, title.trim(), p);
   });
+}
+
+function buildJotoChapter(
+  num: string,
+  title: string,
+  p: ThemePalette
+): string {
+  return `<section style="margin: 36px 0 22px; padding: 0; box-sizing: border-box;">
+<section style="margin: 0; padding: 0; box-sizing: border-box; display: table; width: 100%;">
+<section style="margin: 0; padding: 0; box-sizing: border-box; display: table-cell; width: 70px; vertical-align: middle;">
+<span style="display: inline-block; width: 44px; height: 44px; line-height: 44px; text-align: center; background: ${p.accent}; color: #FFFFFF; font-size: 24px; font-weight: 900;">${num}</span>
+<span style="display: inline-block; width: 42px; height: 14px; margin-left: 14px; margin-top: -8px; background: #BEBEBE;"></span>
+</section>
+<section style="margin: 0; padding: 0 0 4px; box-sizing: border-box; display: table-cell; vertical-align: middle; border-bottom: 1px solid #8A8A8A;">
+<h2 style="margin: 0; padding: 0; font-size: 18px; line-height: 1.4; font-weight: 900; color: ${p.subtitleColor}; letter-spacing: 0; background: none;">${title}</h2>
+</section>
+</section>
+</section>`;
 }
 
 function buildSectionBanner(
@@ -74,6 +95,14 @@ export function highlightStrong(
   if (theme === "minimal") return html;
 
   const p = getThemePalette(theme);
+  if (theme === "joto") {
+    return html.replace(
+      /<strong>([\s\S]*?)<\/strong>/gi,
+      (_match, text: string) =>
+        `<span style="color: ${p.highlightText}; font-weight: 800;">${text}</span>`
+    );
+  }
+
   const bg =
     theme === "vibrant"
       ? p.highlightBg // already a gradient string
@@ -86,15 +115,76 @@ export function highlightStrong(
   );
 }
 
-/* ---------- 3. List emoji injection ---------- */
+/* ---------- 3. List decoration ---------- */
 
-export function injectListEmojis(html: string): string {
+function listIconSvg(idx: number, theme: WechatTheme): string {
+  const p = getThemePalette(theme);
+  const bg = theme === "joto" ? "#EAF2FF" : p.accentLight;
+  const color = p.accent;
+  const shapes = [
+    `<path d="M8 15.5 4.8 12.2l1.4-1.4L8 12.6l5.8-5.8 1.4 1.4L8 15.5Z" fill="${color}"/>`,
+    `<path d="M10 3.5 12.1 7.8 16.8 8.5 13.4 11.8 14.2 16.5 10 14.3 5.8 16.5 6.6 11.8 3.2 8.5 7.9 7.8 10 3.5Z" fill="${color}"/>`,
+    `<path d="M10 3.5c2.4 0 4.3 1.7 4.3 3.9 0 1.5-.8 2.6-2.1 3.5-.7.5-1.1 1-1.2 1.8H9c.1-1.4.7-2.4 1.8-3.1.9-.6 1.4-1.2 1.4-2.1 0-1.1-.9-1.9-2.2-1.9s-2.2.8-2.3 2H5.7c.1-2.4 1.9-4.1 4.3-4.1Z" fill="${color}"/><circle cx="10" cy="15.6" r="1.2" fill="${color}"/>`,
+    `<path d="M5 5.2h10v2H5v-2Zm0 3.9h10v2H5v-2Zm0 3.9h7v2H5v-2Z" fill="${color}"/>`,
+    `<path d="M10 3.5 16.5 10 10 16.5 3.5 10 10 3.5Zm0 3.1L6.6 10 10 13.4 13.4 10 10 6.6Z" fill="${color}"/>`,
+  ];
+  const shape = shapes[idx % shapes.length];
+  return `<span class="joto-list-icon" style="display: inline-block; width: 22px; height: 22px; margin-right: 8px; vertical-align: -5px;"><svg width="22" height="22" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" style="display: block;"><circle cx="10" cy="10" r="9" fill="${bg}"/>${shape}</svg></span>`;
+}
+
+export function injectListIcons(
+  html: string,
+  theme: WechatTheme = "minimal"
+): string {
+  if (theme === "joto") {
+    return formatJotoLists(html);
+  }
+
   let idx = 0;
-  return html.replace(/<li>(?!\s*[\u{1F000}-\u{1FFFF}☀-➿⭐✅\u{1F4CC}\u{1F4A1}\u{1F539}])/gu, () => {
-    const emoji = LIST_EMOJIS[idx % LIST_EMOJIS.length];
-    idx++;
-    return `<li>${emoji} `;
-  });
+  return html.replace(
+    /<li>(?:\s*(?:[\u{1F000}-\u{1FFFF}☀-➿⭐✅\u{1F4CC}\u{1F4A1}\u{1F539}])\s*)?/gu,
+    (match) => {
+      if (match.includes("joto-list-icon") || match.includes("<svg")) {
+        return match;
+      }
+      const icon = listIconSvg(idx, theme);
+      idx++;
+      return `<li>${icon}`;
+    }
+  );
+}
+
+export const injectListEmojis = injectListIcons;
+
+function formatJotoLists(html: string): string {
+  return html.replace(
+    /<(ul|ol)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gi,
+    (match, tag: string, inner: string) => {
+      if (!/<li(?:\s[^>]*)?>[\s\S]*?<\/li>/i.test(inner)) {
+        return match;
+      }
+
+      const styledItems = inner.replace(
+        /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
+        (_item, content: string) =>
+          `<li style="list-style: none; margin: 12px 0; padding: 0 0 0 14px; border-left: 2px solid #DDE8FF; line-height: 1.95; font-size: 16px; color: #555555; letter-spacing: 0; box-sizing: border-box;">${cleanJotoListContent(content)}</li>`
+      );
+
+      return `<${tag} style="list-style: none; margin: 18px 0 22px; padding: 0; box-sizing: border-box;">${styledItems}</${tag}>`;
+    }
+  );
+}
+
+function cleanJotoListContent(content: string): string {
+  return content
+    .replace(/^\s*<span class="joto-list-icon"[\s\S]*?<\/span>\s*/i, "")
+    .replace(
+      /^\s*(?:[\u{1F000}-\u{1FFFF}☀-➿⭐✅📌💡🔹]\s*)+/u,
+      ""
+    )
+    .replace(/^\s*(?:[-*•·]\s*)+/, "")
+    .replace(/^<p[^>]*>/i, "")
+    .replace(/<\/p>$/i, "");
 }
 
 /* ---------- 4. Callout promotion ---------- */
@@ -128,8 +218,14 @@ export function styleParagraphs(
 
   const p = getThemePalette(theme);
 
-  const baseStyle = `margin: 16px 0; line-height: 2; font-size: 15px; color: ${p.text}; letter-spacing: 0.5px;`;
-  const leadStyle = `margin: 16px 0; line-height: 2; font-size: 15px; color: ${p.text}; letter-spacing: 0.5px; padding-left: 14px; border-left: 3px solid ${p.accentLight};`;
+  const baseStyle =
+    theme === "joto"
+      ? `margin: 20px 0; line-height: 2.05; font-size: 16px; color: ${p.text}; letter-spacing: 0;`
+      : `margin: 16px 0; line-height: 2; font-size: 15px; color: ${p.text}; letter-spacing: 0.5px;`;
+  const leadStyle =
+    theme === "joto"
+      ? `margin: 22px 0; line-height: 2.05; font-size: 16px; color: ${p.text}; letter-spacing: 0;`
+      : `margin: 16px 0; line-height: 2; font-size: 15px; color: ${p.text}; letter-spacing: 0.5px; padding-left: 14px; border-left: 3px solid ${p.accentLight};`;
 
   // Track whether the previous element was a heading/banner so we can
   // style the first <p> after it as a "lead" paragraph.
@@ -194,9 +290,11 @@ export function styleColonPrefixes(
   if (theme === "minimal") return html;
 
   const p = getThemePalette(theme);
+  const allowedPrefix =
+    "(?:重点|核心|关键|注意|提示|总结|亮点|痛点|机会|行前|现在|结果|做法|建议|对比|第一步|第二步|第三步|第四步|第五步|第[一二三四五六七八九十0-9]+步)";
 
   return html.replace(
-    /(<p[^>]*>)([一-鿿\w]{2,8}[：:，])/g,
+    new RegExp(`(<p[^>]*>)(${allowedPrefix}[：:，])`, "g"),
     (_match, open: string, prefix: string) =>
       `${open}<span style="color: ${p.accent}; font-weight: 700;">${prefix}</span>`
   );
@@ -217,6 +315,14 @@ export function decorateSubtitles(
   if (theme === "minimal") return html;
 
   const p = getThemePalette(theme);
+
+  if (theme === "joto") {
+    return html.replace(
+      /<h3[^>]*>([\s\S]*?)<\/h3>/gi,
+      (_match, title: string) =>
+        `<section style="margin: 32px 0 22px; text-align: center;"><span style="display: inline-block; width: 42px; border-top: 3px solid ${p.accent}; vertical-align: middle; margin-right: 10px;"></span><h3 style="display: inline-block; margin: 0; padding: 0; font-size: 16px; font-weight: 900; color: ${p.subtitleColor}; line-height: 1.4; text-align: center; letter-spacing: 0;">${title.trim()}</h3><span style="display: inline-block; width: 42px; border-top: 3px solid ${p.accent}; vertical-align: middle; margin-left: 10px;"></span></section>`
+    );
+  }
 
   if (theme === "polished") {
     return html.replace(
@@ -269,6 +375,8 @@ export function insertSectionDividers(
   const divider =
     theme === "minimal"
       ? `<hr style="border: none; border-top: 1px solid #eee; margin: 28px 0;">`
+      : theme === "joto"
+        ? `<hr style="border: none; border-top: 1px solid #E6EAF2; margin: 36px 0;">`
       : `<hr style="border: none; height: 3px; background: linear-gradient(to right, ${p.accent}, rgba(${hexToRgb(p.accent)},0.1)); margin: 32px 0; border-radius: 2px;">`;
 
   // Match either raw <h2 (without inline style — those are untransformed)
@@ -305,7 +413,9 @@ export function insertImagePlaceholders(
 
   const placeholder = theme === "minimal"
     ? `<section style="width: 100%; min-height: 100px; border: 2px dashed #ddd; border-radius: 8px; text-align: center; padding: 20px 16px; margin: 18px 0; color: #bbb; font-size: 13px; background-color: #fafafa; box-sizing: border-box;">🖼️ 配图占位 — 建议插入与本节相关的图片</section>`
-    : `<section style="width: 100%; min-height: 100px; border: 2px dashed ${p.accentLight}; border-radius: 12px; text-align: center; padding: 20px 16px; margin: 18px 0; color: ${p.textMuted}; font-size: 13px; background: linear-gradient(135deg, ${p.accentLight}, rgba(255,255,255,0.6)); box-sizing: border-box;">🖼️ 配图占位 — 建议插入与本节相关的图片</section>`;
+    : theme === "joto"
+      ? `<section style="width: 100%; min-height: 210px; border: 1px solid #DDE8FF; border-radius: 4px; text-align: center; padding: 42px 18px; margin: 26px 0; color: ${p.textMuted}; font-size: 14px; background-color: #F7FAFF; box-sizing: border-box;"><span style="display: block; color: ${p.accent}; font-weight: 800; margin-bottom: 8px;">产品截图 / 视频封面占位</span><span style="display: block;">建议插入产品截图、视频封面或架构图</span></section>`
+      : `<section style="width: 100%; min-height: 100px; border: 2px dashed ${p.accentLight}; border-radius: 12px; text-align: center; padding: 20px 16px; margin: 18px 0; color: ${p.textMuted}; font-size: 13px; background: linear-gradient(135deg, ${p.accentLight}, rgba(255,255,255,0.6)); box-sizing: border-box;">🖼️ 配图占位 — 建议插入与本节相关的图片</section>`;
 
   // Strategy: find each section boundary (h2 or PART banner), then insert
   // the placeholder after the first block-level element that follows it.
@@ -392,10 +502,13 @@ export function decorateHtml(
   let result = html;
 
   // Order matters: structural transforms first, then inline, then spacing
+  if (opts.headings && theme === "joto") {
+    result = normalizeJotoHeadingHierarchy(result);
+  }
   if (opts.headings) result = decorateHeadings(result, theme);
   if (opts.subtitles) result = decorateSubtitles(result, theme);
   if (opts.highlights) result = highlightStrong(result, theme);
-  if (opts.emojis) result = injectListEmojis(result);
+  if (opts.emojis) result = injectListIcons(result, theme);
   if (opts.callouts) result = promoteCallouts(result, theme);
   if (opts.blockquotes) result = styleBlockquotes(result, theme);
   if (opts.paragraphs) result = styleParagraphs(result, theme);
@@ -405,11 +518,22 @@ export function decorateHtml(
   if (opts.dividers) result = insertSectionDividers(result, theme);
   // Image placeholders last — they insert after first block in each section
   if (opts.imagePlaceholders) result = insertImagePlaceholders(result, theme);
-
   return result;
 }
 
 /* ---------- Helpers ---------- */
+
+function normalizeJotoHeadingHierarchy(html: string): string {
+  const h2Count = html.match(/<h2[^>]*>[\s\S]*?<\/h2>/gi)?.length ?? 0;
+  const h3Count = html.match(/<h3[^>]*>[\s\S]*?<\/h3>/gi)?.length ?? 0;
+
+  if (h3Count === 0 || h2Count > 1) return html;
+
+  return html.replace(
+    /<h3([^>]*)>([\s\S]*?)<\/h3>/gi,
+    (_match, attrs: string, title: string) => `<h2${attrs}>${title}</h2>`
+  );
+}
 
 function hexToRgb(hex: string): string {
   const h = hex.replace("#", "");

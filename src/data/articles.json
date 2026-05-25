@@ -2,7 +2,7 @@
   {
     "id": "art-1",
     "productId": "prod-loop",
-    "angleId": "angle-promo",
+    "angleId": "angle-product-intro",
     "styleId": "style-36kr",
     "accountId": "acct-joto-official",
     "status": "published",
@@ -28,7 +28,7 @@
   {
     "id": "art-2",
     "productId": "prod-nova",
-    "angleId": "angle-promo",
+    "angleId": "angle-product-intro",
     "styleId": "style-joto",
     "accountId": "acct-joto-stories",
     "status": "published",
@@ -54,7 +54,7 @@
   {
     "id": "art-3",
     "productId": "prod-atlas",
-    "angleId": "angle-summit",
+    "angleId": "angle-trend",
     "styleId": "style-36kr",
     "status": "pending_review",
     "title": "2026 年企业数据平台的三个信号",
@@ -77,7 +77,7 @@
   {
     "id": "art-4",
     "productId": "prod-forge",
-    "angleId": "angle-promo",
+    "angleId": "angle-product-intro",
     "styleId": "style-joto",
     "status": "draft",
     "title": "Forge 的增量构建是怎么做到 10 秒响应的",
@@ -100,7 +100,7 @@
   {
     "id": "art-5",
     "productId": "prod-lumen",
-    "angleId": "angle-compare",
+    "angleId": "angle-competitor",
     "styleId": "style-leijun",
     "accountId": "acct-joto-stories",
     "status": "published",
@@ -126,7 +126,7 @@
   {
     "id": "art-6",
     "productId": "prod-vault",
-    "angleId": "angle-compare",
+    "angleId": "angle-competitor",
     "styleId": "style-joto",
     "status": "approved",
     "title": "Vault 和传统 KMS 的三点关键不同",
@@ -149,7 +149,7 @@
   {
     "id": "art-7",
     "productId": "prod-loop",
-    "angleId": "angle-promo",
+    "angleId": "angle-product-intro",
     "styleId": "style-leijun",
     "accountId": "acct-joto-official",
     "status": "published",
@@ -175,7 +175,7 @@
   {
     "id": "art-8",
     "productId": "prod-nova",
-    "angleId": "angle-compare",
+    "angleId": "angle-competitor",
     "styleId": "style-kazik",
     "status": "rejected",
     "title": "为什么中型企业的 CRM 总是做成「销售统计工具」",

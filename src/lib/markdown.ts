@@ -37,6 +37,11 @@ function renderInline(text: string): string {
   let out = text;
   // Bold first (greedier syntax: **…**)
   out = out.replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>");
+  // Qwen occasionally leaves one side of a bold marker dangling, e.g.
+  // "**3分钟" or "15cm”。 **". In rendered HTML this looks like raw
+  // Markdown, so strip leftover double-star markers after valid bold spans
+  // have already been converted.
+  out = out.replace(/\*\*/g, "");
   // Italic (single * or _) — only match when there's actual content and no
   // surrounding word chars (avoids munging "5*6").
   out = out.replace(/(?<![\w*])\*([^*\n]+?)\*(?!\w)/g, "<em>$1</em>");

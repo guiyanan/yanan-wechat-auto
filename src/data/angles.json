@@ -1,32 +1,52 @@
 [
   {
-    "id": "angle-promo",
+    "id": "angle-product-intro",
     "order": 1,
-    "name": "产品推广文",
-    "category": "产品推广",
-    "sceneDesc": "效益展示 + 使用场景",
-    "exampleTitle": "把对账时间从 4 小时压到 20 分钟,我们做对了三件事",
-    "promptInstruction": "面向业务决策层和运营人员,先用具体效益数字开场作为钩子,正中段说明落地步骤,结尾对比传统做法突出差异化优势。语气专业克制,不口语化,不过度学术。",
+    "name": "产品介绍",
+    "category": "产品介绍",
+    "sceneDesc": "讲清产品是什么、解决谁的问题、怎么用",
+    "exampleTitle": "【产品自研】把多后台运维变成一句话,Pharaoh Command 正式亮相",
+    "promptInstruction": "以一个目标用户的日常工作钩子开头,先写他/她为什么会觉得这个问题麻烦;中段用编号章节拆解产品是什么、谁来用、第一次怎么用;每节必须落到具体角色、操作动作和工作变化;不得编造客户、营收、提效百分比或部署周期;结尾给出可尝试的小行动,不要写往期回顾、二维码或联系方式模块。",
     "scope": "platform"
   },
   {
-    "id": "angle-compare",
+    "id": "angle-product-diff",
     "order": 2,
-    "name": "深度对比文",
-    "category": "场景推广",
-    "sceneDesc": "竞品对比 + 技术差异分析",
-    "exampleTitle": "Loop 与传统 RPA 的三层架构差异:为什么我们选浏览器原生 Agent",
-    "promptInstruction": "面向 IT 部门和技术评估者,开篇直击选型场景的真实痛点作为钩子,中段说明技术使用路径,结尾用结构化对比展开技术差异(架构/部署/运维/总拥有成本)。客观、数据驱动,不带情绪。",
+    "name": "产品差异",
+    "category": "产品差异",
+    "sceneDesc": "突出 JOTO 产品相对传统方案的变化和优势",
+    "exampleTitle": "【产品自研】告别平台割裂与经验断层,AI 真正进入运维中枢",
+    "promptInstruction": "围绕传统方案的旧流程与 JOTO 新流程展开,回答为什么选我们而不是继续沿用原来的做法;每个章节按“工作卡点 → JOTO 能力 → 体验变化 → 蓝色金句总结”写;技术名词只能作为证据,不能连续堆概念;不得编造客户和量化效果。",
     "scope": "platform"
   },
   {
-    "id": "angle-summit",
+    "id": "angle-competitor",
     "order": 3,
-    "name": "活动/峰会文",
-    "category": "峰会消息",
-    "sceneDesc": "行业背景 + 产品定位",
-    "exampleTitle": "在 2026 智能办公峰会上,我们看到了下一代企业自动化的轮廓",
-    "promptInstruction": "面向会议受众和行业关注者,开篇用峰会/沙龙现场场景或行业宏观信号作为钩子,中段简洁说明产品定位与使用方式,结尾对比行业方案突出我们的差异化定位。第三人称客观叙事。",
+    "name": "竞品对比",
+    "category": "竞品对比",
+    "sceneDesc": "围绕竞品或传统平台,讲 JOTO 为什么更适合某类场景",
+    "exampleTitle": "【产品自研】为什么网络运维不该继续困在多个 Dashboard 里",
+    "promptInstruction": "只基于用户提供的竞品或传统方案素材写对比,不得编造竞品事实;结构上先写选型困境,再按场景对比传统平台/竞品与 JOTO 的差异,每个差异必须对应一个用户动作和业务结果;结论保持克制,不使用绝对化贬低。",
+    "scope": "tenant"
+  },
+  {
+    "id": "angle-trend",
+    "order": 4,
+    "name": "时事热点对比",
+    "category": "时事热点",
+    "sceneDesc": "输入热点文章或行业事件后,结合 JOTO 产品观点生成对比稿",
+    "exampleTitle": "【趋势观察】当 AI Agent 进入企业运维,真正改变的不是聊天框",
+    "promptInstruction": "只基于用户提供的热点标题、摘要、链接或正文展开,不得编造新闻来源、客户或数据;开头先复述热点背后的行业矛盾,再引出 JOTO 的产品观点;中段用 JOTO 风格编号章节对比“热闹概念”与“真实落地”,结尾回到企业网络运维的价值判断。",
+    "scope": "platform"
+  },
+  {
+    "id": "angle-scenario",
+    "order": 5,
+    "name": "场景案例",
+    "category": "场景案例",
+    "sceneDesc": "从一个具体使用场景讲清用户为什么需要这个产品",
+    "exampleTitle": "【场景案例】一次真实任务里,AI 如何把复杂流程变成可执行方案",
+    "promptInstruction": "以一个匿名具体角色的一天开场,围绕任务、卡点、传统做法、JOTO 介入和结果变化展开;不要只介绍功能,必须讲清为什么需要这个产品、第一次怎么用、用完之后工作方式发生什么变化;没有真实素材时不得写成客户案例或实施效果。",
     "scope": "platform"
   }
 ]

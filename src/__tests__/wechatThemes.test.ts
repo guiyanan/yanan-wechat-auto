@@ -9,7 +9,7 @@ import {
   type WechatTheme,
 } from "@/lib/wechatThemes";
 
-const ALL_THEMES: WechatTheme[] = ["minimal", "polished", "vibrant"];
+const ALL_THEMES: WechatTheme[] = ["minimal", "polished", "vibrant", "joto"];
 
 describe("wechatThemes", () => {
   describe("getThemeCss", () => {
@@ -35,6 +35,14 @@ describe("wechatThemes", () => {
       expect(css).toContain("#DE7356");
       expect(css).toContain("linear-gradient");
     });
+
+    it("joto theme uses white official-account styling with blue accents", () => {
+      const css = getThemeCss("joto");
+      expect(css).toContain("background-color: #FFFFFF");
+      expect(css).toContain("#1268FF");
+      expect(css).toContain(".joto-article-shell");
+      expect(css).toContain(".joto-past-articles");
+    });
   });
 
   describe("getThemePalette", () => {
@@ -57,6 +65,13 @@ describe("wechatThemes", () => {
       const p = getThemePalette("vibrant");
       expect(p.accent).toBe("#DE7356");
       expect(p.highlightBg).toContain("linear-gradient");
+    });
+
+    it("joto palette is blue on white", () => {
+      const p = getThemePalette("joto");
+      expect(p.accent).toBe("#1268FF");
+      expect(p.text).toBe("#5F5F5F");
+      expect(p.quoteBg).toBe("#F6F9FF");
     });
   });
 
@@ -88,35 +103,31 @@ describe("wechatThemes", () => {
   });
 
   describe("WECHAT_THEME_LABELS", () => {
-    it("has labels for all 3 themes", () => {
-      expect(Object.keys(WECHAT_THEME_LABELS)).toHaveLength(3);
+    it("has labels for all themes", () => {
+      expect(Object.keys(WECHAT_THEME_LABELS)).toHaveLength(4);
       expect(WECHAT_THEME_LABELS.minimal).toBe("简约白");
       expect(WECHAT_THEME_LABELS.polished).toBe("商务蓝");
       expect(WECHAT_THEME_LABELS.vibrant).toBe("活力橙");
+      expect(WECHAT_THEME_LABELS.joto).toBe("JOTO 公众号");
     });
   });
 
   describe("THEME_PALETTES", () => {
-    it("has palette for all 3 themes", () => {
-      expect(Object.keys(THEME_PALETTES)).toHaveLength(3);
+    it("has palette for all themes", () => {
+      expect(Object.keys(THEME_PALETTES)).toHaveLength(4);
     });
   });
 
   describe("defaultThemeForArticleType", () => {
-    it("returns vibrant for 产品推广", () => {
-      expect(defaultThemeForArticleType("产品推广")).toBe("vibrant");
+    it("returns joto for JOTO content angles", () => {
+      expect(defaultThemeForArticleType("产品介绍")).toBe("joto");
+      expect(defaultThemeForArticleType("产品差异")).toBe("joto");
+      expect(defaultThemeForArticleType("竞品对比")).toBe("joto");
+      expect(defaultThemeForArticleType("时事热点")).toBe("joto");
     });
 
-    it("returns polished for 峰会消息", () => {
-      expect(defaultThemeForArticleType("峰会消息")).toBe("polished");
-    });
-
-    it("returns minimal for 场景推广", () => {
-      expect(defaultThemeForArticleType("场景推广")).toBe("minimal");
-    });
-
-    it("returns minimal for undefined", () => {
-      expect(defaultThemeForArticleType(undefined)).toBe("minimal");
+    it("returns joto for undefined so review defaults to the公众号模板", () => {
+      expect(defaultThemeForArticleType(undefined)).toBe("joto");
     });
   });
 

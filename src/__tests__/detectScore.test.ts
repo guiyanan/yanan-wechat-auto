@@ -40,6 +40,9 @@ describe("detectScore · return shape", () => {
     expect(result).toHaveProperty("sentenceUniformity");
     expect(result).toHaveProperty("repeatedOpeners");
     expect(result).toHaveProperty("passiveFiller");
+    expect(result).toHaveProperty("corporateCliche");
+    expect(result).toHaveProperty("templateStructure");
+    expect(result).toHaveProperty("unsupportedFactRisk");
     expect(result).toHaveProperty("total");
   });
 
@@ -55,7 +58,13 @@ describe("detectScore · return shape", () => {
   it("total equals sum of dimensions (capped at 100)", () => {
     const r = detectScore(AI_TEXT);
     const rawSum =
-      r.phraseDensity + r.sentenceUniformity + r.repeatedOpeners + r.passiveFiller;
+      r.phraseDensity +
+      r.sentenceUniformity +
+      r.repeatedOpeners +
+      r.passiveFiller +
+      r.corporateCliche +
+      r.templateStructure +
+      r.unsupportedFactRisk;
     expect(r.total).toBe(Math.min(100, rawSum));
   });
 });
@@ -75,6 +84,20 @@ describe("detectScore · AI vs human discrimination", () => {
     const aiScore = detectScoreTotal(AI_TEXT);
     const humanScore = detectScoreTotal(HUMAN_TEXT);
     expect(aiScore - humanScore).toBeGreaterThan(30);
+  });
+
+  it("scores corporate whitepaper-style copy higher than 50", () => {
+    const corporateText = [
+      "产品概述：本解决方案围绕核心能力进行场景化落地。",
+      "需求概述：通过全流程闭环与生态协同，全面赋能业务创新。",
+      "价值分析：系统可显著提升组织效率，形成可复制的落地实践。",
+      "效果分析：最终实现智能化升级和持续优化。",
+    ].join("\n");
+
+    const result = detectScore(corporateText);
+    expect(result.corporateCliche).toBeGreaterThan(0);
+    expect(result.templateStructure).toBeGreaterThan(0);
+    expect(result.total).toBeGreaterThan(50);
   });
 });
 

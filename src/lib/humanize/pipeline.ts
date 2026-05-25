@@ -53,6 +53,12 @@ export interface PipelineOptions {
    * Default: 3
    */
   concurrency?: number;
+  /**
+   * In structure-preserving mode, also rewrite the visible microcopy inside
+   * headings, list items, and blockquotes while preserving markdown markers.
+   * Default: true
+   */
+  rewriteMicrocopy?: boolean;
   /** AbortSignal to cancel in-flight Qwen calls. */
   signal?: AbortSignal;
 }
@@ -180,6 +186,134 @@ async function processSegment(
   return { text: current, rounds };
 }
 
+function cleanMicrocopy(text: string): string {
+  return text
+    .replace(/\r?\n+/g, " ")
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^>\s?/, "")
+    .replace(/^[-*]\s+/, "")
+    .replace(/^\d+\.\s+/, "")
+    .trim();
+}
+
+function isValidMicrocopyRewrite(
+  original: string,
+  rewritten: string,
+  kind: MdBlock["type"]
+): boolean {
+  const cleanOriginal = cleanMicrocopy(original);
+  const cleanRewritten = cleanMicrocopy(rewritten);
+  if (!cleanRewritten) return false;
+
+  const maxLength =
+    kind === "heading" ? Math.max(28, cleanOriginal.length + 12) : 72;
+  if (cleanRewritten.length > maxLength) return false;
+
+  // Headings should read like labels, not paragraph prose.
+  if (kind === "heading" && /[。！？；]/.test(cleanRewritten)) return false;
+
+  // Avoid accepting outputs that accidentally include markdown block markers.
+  if (/^#{1,6}\s|^[-*]\s|^>\s?/.test(cleanRewritten)) return false;
+
+  return true;
+}
+
+async function rewriteMicrocopyText(
+  text: string,
+  humanizeFn: HumanizeFn,
+  threshold: number,
+  maxRounds: number,
+  signal: AbortSignal | undefined,
+  kind: MdBlock["type"]
+): Promise<{ text: string; rounds: number }> {
+  const result = await processSegment(
+    text,
+    humanizeFn,
+    threshold,
+    maxRounds,
+    signal
+  );
+  const original = cleanMicrocopy(text);
+  const rewritten = cleanMicrocopy(result.text);
+  return {
+    text: isValidMicrocopyRewrite(original, rewritten, kind)
+      ? rewritten
+      : original,
+    rounds: result.rounds,
+  };
+}
+
+async function processMicrocopyBlock(
+  block: MdBlock,
+  humanizeFn: HumanizeFn,
+  threshold: number,
+  maxRounds: number,
+  signal?: AbortSignal
+): Promise<{ block: MdBlock; rounds: number }> {
+  if (block.type === "heading") {
+    const match = block.raw.match(/^(#{1,3}\s+)([\s\S]+)$/);
+    if (!match) return { block, rounds: 0 };
+    const rewritten = await rewriteMicrocopyText(
+      match[2],
+      humanizeFn,
+      threshold,
+      maxRounds,
+      signal,
+      block.type
+    );
+    return {
+      block: { ...block, raw: `${match[1]}${rewritten.text}` },
+      rounds: rewritten.rounds,
+    };
+  }
+
+  if (block.type === "list") {
+    let rounds = 0;
+    const lines: string[] = [];
+    for (const line of block.raw.split("\n")) {
+      const match = line.match(/^(\s*(?:[-*]|\d+\.)\s+)([\s\S]+)$/);
+      if (!match) {
+        lines.push(line);
+        continue;
+      }
+      const rewritten = await rewriteMicrocopyText(
+        match[2],
+        humanizeFn,
+        threshold,
+        maxRounds,
+        signal,
+        block.type
+      );
+      rounds += rewritten.rounds;
+      lines.push(`${match[1]}${rewritten.text}`);
+    }
+    return { block: { ...block, raw: lines.join("\n") }, rounds };
+  }
+
+  if (block.type === "blockquote") {
+    const content = block.raw
+      .split("\n")
+      .map((line) => line.replace(/^>\s?/, ""))
+      .join(" ")
+      .trim();
+    if (!content) return { block, rounds: 0 };
+    const rewritten = await rewriteMicrocopyText(
+      content,
+      humanizeFn,
+      threshold,
+      maxRounds,
+      signal,
+      block.type
+    );
+    return {
+      block: { ...block, raw: `> ${rewritten.text}` },
+      rounds: rewritten.rounds,
+    };
+  }
+
+  return { block, rounds: 0 };
+}
+
 // ─── Public API ──────────────────────────────────────────────────────
 
 /**
@@ -256,6 +390,7 @@ export async function runStructurePreservingPipeline(
     threshold = 40,
     maxRounds = 2,
     concurrency = 3,
+    rewriteMicrocopy = true,
     signal,
   } = options ?? {};
 
@@ -267,7 +402,7 @@ export async function runStructurePreservingPipeline(
     if (b.type === "paragraph") paragraphIndices.push(i);
   });
 
-  if (paragraphIndices.length === 0) {
+  if (paragraphIndices.length === 0 && !rewriteMicrocopy) {
     // Nothing to humanize — still score so callers get a consistent shape
     const finalText = joinMarkdownBlocks(blocks);
     return {
@@ -287,14 +422,45 @@ export async function runStructurePreservingPipeline(
   const results = await runWithConcurrency(tasks, concurrency);
 
   // Rebuild the document with rewritten paragraphs and untouched structure.
-  const finalBlocks: MdBlock[] = blocks.map((b, i) => {
+  let finalBlocks: MdBlock[] = blocks.map((b, i) => {
     const paragraphRank = paragraphIndices.indexOf(i);
     if (paragraphRank === -1) return b;
     return { type: "paragraph", raw: results[paragraphRank].text.trim() };
   });
 
+  let microcopyRounds = 0;
+  if (rewriteMicrocopy) {
+    const microcopyIndices: number[] = [];
+    finalBlocks.forEach((b, i) => {
+      if (b.type === "heading" || b.type === "list" || b.type === "blockquote") {
+        microcopyIndices.push(i);
+      }
+    });
+
+    const microcopyTasks = microcopyIndices.map(
+      (idx) => () =>
+        processMicrocopyBlock(
+          finalBlocks[idx],
+          humanizeFn,
+          threshold,
+          maxRounds,
+          signal
+        )
+    );
+    const microcopyResults = await runWithConcurrency(
+      microcopyTasks,
+      concurrency
+    );
+    finalBlocks = [...finalBlocks];
+    microcopyResults.forEach((result, rank) => {
+      finalBlocks[microcopyIndices[rank]] = result.block;
+      microcopyRounds += result.rounds;
+    });
+  }
+
   const finalText = joinMarkdownBlocks(finalBlocks);
-  const totalRounds = results.reduce((sum, r) => sum + r.rounds, 0);
+  const totalRounds =
+    results.reduce((sum, r) => sum + r.rounds, 0) + microcopyRounds;
   const scoreBreakdown = detectScore(finalText);
 
   return { text: finalText, scoreBreakdown, totalRounds };

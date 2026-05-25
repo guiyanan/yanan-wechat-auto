@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  injectListEmojis,
+  injectListIcons,
   promoteCallouts,
   decorateHeadings,
   decorateSubtitles,
@@ -12,37 +12,47 @@ import {
   insertSectionDividers,
   insertImagePlaceholders,
   decorateHtml,
-  LIST_EMOJIS,
 } from "@/lib/wechatDecorate";
 
 describe("wechatDecorate", () => {
-  describe("injectListEmojis", () => {
-    it("adds emojis to plain list items", () => {
+  describe("injectListIcons", () => {
+    it("formats JOTO list items without SVG icons or native bullets", () => {
       const html = "<ul><li>First</li><li>Second</li><li>Third</li></ul>";
-      const result = injectListEmojis(html);
-      expect(result).toContain(`<li>${LIST_EMOJIS[0]} First`);
-      expect(result).toContain(`<li>${LIST_EMOJIS[1]} Second`);
-      expect(result).toContain(`<li>${LIST_EMOJIS[2]} Third`);
+      const result = injectListIcons(html, "joto");
+      expect(result).toContain("list-style: none");
+      expect(result).toContain("border-left: 2px solid #DDE8FF");
+      expect(result).toContain("First");
+      expect(result).not.toContain('class="joto-list-icon"');
+      expect(result).not.toContain("<svg");
+      expect(result).not.toContain("✅");
     });
 
-    it("cycles through emoji list", () => {
+    it("formats each JOTO list item", () => {
       const items = Array.from({ length: 7 }, (_, i) => `<li>Item ${i}</li>`);
       const html = `<ul>${items.join("")}</ul>`;
-      const result = injectListEmojis(html);
-      expect(result).toContain(`<li>${LIST_EMOJIS[0]} Item 0`);
-      expect(result).toContain(`<li>${LIST_EMOJIS[4]} Item 4`);
-      expect(result).toContain(`<li>${LIST_EMOJIS[0]} Item 5`);
+      const result = injectListIcons(html, "joto");
+      expect(result.match(/border-left: 2px solid #DDE8FF/g)).toHaveLength(7);
+      expect(result).toContain("Item 6");
     });
 
-    it("does not double-add emoji to items already starting with emoji", () => {
+    it("removes simple emoji markers in JOTO lists", () => {
       const html = "<ul><li>✅ Already has emoji</li></ul>";
-      const result = injectListEmojis(html);
-      expect(result).toBe(html);
+      const result = injectListIcons(html, "joto");
+      expect(result).toContain("Already has emoji");
+      expect(result).not.toContain('class="joto-list-icon"');
+      expect(result).not.toContain("✅");
+    });
+
+    it("keeps SVG icons for non-JOTO decorative themes", () => {
+      const html = "<ul><li>First</li><li>Second</li></ul>";
+      const result = injectListIcons(html, "polished");
+      expect(result).toContain('class="joto-list-icon"');
+      expect(result).toContain("<svg");
     });
 
     it("handles empty list", () => {
       const html = "<ul></ul>";
-      const result = injectListEmojis(html);
+      const result = injectListIcons(html, "joto");
       expect(result).toBe(html);
     });
   });
@@ -116,6 +126,16 @@ describe("wechatDecorate", () => {
       expect(result).toContain("display: table;");
       expect(result).toContain("display: table-cell;");
     });
+
+    it("transforms h2 into JOTO numbered chapter plate without PART label", () => {
+      const html = "<h2>产品概述：AI 接管对话</h2>";
+      const result = decorateHeadings(html, "joto");
+      expect(result).toContain("01");
+      expect(result).toContain("#1268FF");
+      expect(result).toContain("产品概述：AI 接管对话");
+      expect(result).toContain("border-bottom: 1px solid #8A8A8A");
+      expect(result).not.toContain("PART");
+    });
   });
 
   describe("decorateSubtitles", () => {
@@ -147,6 +167,14 @@ describe("wechatDecorate", () => {
       expect(result).toContain("First");
       expect(result).toContain("Second");
       expect(result.match(/border-left: 3px solid/g)?.length).toBe(2);
+    });
+
+    it("centers joto h3 subtitles between blue lines", () => {
+      const html = "<h3>跨厂商资产秒级定位</h3>";
+      const result = decorateSubtitles(html, "joto");
+      expect(result).toContain("text-align: center");
+      expect(result).toContain("#1268FF");
+      expect(result).toContain("跨厂商资产秒级定位");
     });
   });
 
@@ -266,6 +294,14 @@ describe("wechatDecorate", () => {
       expect(result).toContain("第一步，");
     });
 
+    it("does not color ordinary sentence openings just because they have a comma", () => {
+      const html = `<p style="color: #2c3e50;">业务卡了，赖网络。</p><p>网络工程师，可能最常背锅。</p>`;
+      const result = styleColonPrefixes(html, "joto");
+      expect(result).not.toContain("color: #1268FF");
+      expect(result).toContain("业务卡了，赖网络。");
+      expect(result).toContain("网络工程师，可能最常背锅。");
+    });
+
     it("does NOT style for minimal theme", () => {
       const html = `<p>行前：整合信息</p>`;
       const result = styleColonPrefixes(html, "minimal");
@@ -302,6 +338,14 @@ describe("wechatDecorate", () => {
       const html = "<p><strong>bold</strong></p>";
       const result = highlightStrong(html, "minimal");
       expect(result).toBe(html);
+    });
+
+    it("turns strong text into JOTO blue emphasis", () => {
+      const html = "<p><strong>AI 会说话，更会动手。</strong></p>";
+      const result = highlightStrong(html, "joto");
+      expect(result).toContain("color: #1268FF");
+      expect(result).toContain("AI 会说话，更会动手。");
+      expect(result).not.toContain("<strong>");
     });
   });
 
@@ -369,8 +413,8 @@ describe("wechatDecorate", () => {
       // Strong highlighted
       expect(result).not.toContain("<strong>");
 
-      // Emoji injected
-      expect(result).toContain(LIST_EMOJIS[0]);
+      // SVG list icon injected
+      expect(result).toContain("joto-list-icon");
 
       // Callout promoted
       expect(result).toContain("<blockquote");
@@ -399,7 +443,7 @@ describe("wechatDecorate", () => {
       });
 
       expect(result).toContain("PART");
-      expect(result).not.toContain(LIST_EMOJIS[0]);
+      expect(result).not.toContain("joto-list-icon");
     });
 
     it("handles flat h2+p article with number highlighting", () => {
@@ -431,6 +475,43 @@ describe("wechatDecorate", () => {
       expect(result).toContain("linear-gradient");
       expect(result).toContain("background-color: #fef9f2");
       expect(result).toContain("line-height: 2");
+    });
+
+    it("applies full JOTO official-account article furniture without manual footer blocks", () => {
+      const html = `<h2>产品概述：AI 接管对话</h2><h3>跨厂商资产秒级定位</h3><p>传统平台让团队在多个后台之间切换。</p><p><strong>AI 会说话，更会动手。</strong></p>`;
+      const result = decorateHtml(html, { theme: "joto", imagePlaceholders: true });
+
+      expect(result).toContain("01");
+      expect(result).toContain("02");
+      expect(result).toContain("#1268FF");
+      expect(result).toContain("产品截图 / 视频封面占位");
+      expect(result).not.toContain("往期回顾");
+      expect(result).not.toContain("微信公众号");
+      expect(result).not.toContain("JOTO AI");
+      expect(result).not.toContain("PART");
+    });
+
+    it("promotes JOTO h3 sections to numbered chapters when only one h2 exists", () => {
+      const html = `<h2>第一层能力</h2><p>开头</p><h3>第二层能力</h3><p>正文</p><h3>第三层能力</h3><p>正文</p>`;
+      const result = decorateHtml(html, { theme: "joto" });
+
+      expect(result).toContain("01");
+      expect(result).toContain("02");
+      expect(result).toContain("03");
+      expect(result).toContain("第二层能力");
+      expect(result).toContain("第三层能力");
+    });
+
+    it("does not inject SVG list icons into JOTO full pipeline", () => {
+      const html = `<h2>清单</h2><ul><li>✅ 第一项</li><li>第二项</li></ul>`;
+      const result = decorateHtml(html, { theme: "joto" });
+
+      expect(result).toContain("第一项");
+      expect(result).toContain("第二项");
+      expect(result).toContain("list-style: none");
+      expect(result).not.toContain("<svg");
+      expect(result).not.toContain("joto-list-icon");
+      expect(result).not.toContain("✅");
     });
   });
 
