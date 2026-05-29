@@ -365,6 +365,21 @@ describe("prompts · renderPrompt", () => {
     expect(instruction).toContain("不要用不同说法重复同一个意思");
   });
 
+  it("standard and deep content lengths are capped more tightly", () => {
+    const standard = getContentLengthInstruction("standard");
+    const deep = getContentLengthInstruction("deep");
+
+    expect(getContentLengthOption("standard").wordRange).toBe("1100-1400 字");
+    expect(standard).toContain("最多不超过 1400 字");
+    expect(standard).toContain("3 个章节为主");
+    expect(standard).toContain("每段只讲一个新信息");
+
+    expect(getContentLengthOption("deep").wordRange).toBe("1500-1800 字");
+    expect(deep).toContain("最多不超过 2000 字");
+    expect(deep).toContain("最多 4 个完整章节");
+    expect(deep).toContain("不要把同一流程/价值换句话写两遍");
+  });
+
   it("body prompt lets short drafts override dense paragraph rules", () => {
     const out = renderPrompt("body", {
       product: "Loop RPA",
@@ -402,6 +417,24 @@ describe("prompts · renderPrompt", () => {
     expect(out.system).toContain("提效百分比");
     expect(out.system).toContain("擅自点名任何企业");
     expect(out.system).toContain("可预期变化");
+  });
+
+  it("body prompt forbids unconfirmed product operation steps", () => {
+    const out = renderPrompt("body", {
+      product: "Loop RPA",
+      productDesc: "浏览器 Agent",
+      angle: "产品推广",
+      angleInstruction: "轻松种草",
+      styleName: "JOTO",
+      styleProfile: "专业克制",
+      styleSample: "示例段落",
+      outline: "## 大纲",
+      sourcePack: "未提供真实操作流程。",
+    });
+
+    expect(out.system).toContain("产品使用流程只能写素材里明确确认过的步骤");
+    expect(out.system).toContain("不要写按钮名、后台路径、点击顺序或部署步骤");
+    expect(out.system).toContain("不得出现裸 Markdown 标记");
   });
 
   it("humanize system preserves fact grounding across all branches", () => {

@@ -33,6 +33,7 @@ import {
   buildQwenHumanizeFn,
 } from "@/lib/humanize/pipeline";
 import { summarizeProductImageAssets } from "@/lib/productImages";
+import { cleanGeneratedMarkdown } from "@/lib/generatedMarkdown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -222,6 +223,7 @@ export async function POST(req: NextRequest) {
             result.body += delta;
             emit({ type: "body-delta", delta });
           }
+          result.body = cleanGeneratedMarkdown(result.body);
           emitStageDone("body", Date.now() - t0);
         } catch (err) {
           emitStageFailed("body", Date.now() - t0, errMsg(err));
@@ -250,7 +252,7 @@ export async function POST(req: NextRequest) {
               humanizeFn,
               { threshold: 40, maxRounds: 2, concurrency: 3, signal }
             );
-            result.body = pipelineResult.text;
+            result.body = cleanGeneratedMarkdown(pipelineResult.text);
             emitStageDone("humanize" as PipelineStageId, Date.now() - t0, {
               score: pipelineResult.scoreBreakdown.total,
               rounds: pipelineResult.totalRounds,

@@ -20,6 +20,7 @@ import { getAllProducts } from "@/lib/articles";
 import { mergeProducts } from "@/lib/productCatalog";
 import { inferArticleType } from "@/lib/articleType";
 import { htmlToMarkdown, markdownToHtml } from "@/lib/markdown";
+import { cleanGeneratedMarkdown } from "@/lib/generatedMarkdown";
 import anglesData from "@/data/angles.json";
 import stylesData from "@/data/styles.json";
 import type { Angle, Article, Product, WritingStyle } from "@/types";
@@ -184,7 +185,7 @@ export default function BatchPreviewPage({
     // Going through Markdown (instead of stripping to plain text) preserves
     // **bold** spans, ## headings, - lists, > blockquotes — without this the
     // humanized article comes back as a flat sequence of <p> tags.
-    const markdown = htmlToMarkdown(article.contentHtml);
+    const markdown = cleanGeneratedMarkdown(htmlToMarkdown(article.contentHtml));
 
     if (!markdown.trim()) {
       patch(article.id, {
@@ -241,7 +242,7 @@ export default function BatchPreviewPage({
 
       // Convert pipeline output (Markdown) back to rich HTML — preserves
       // headings, **bold**, lists, blockquotes from Qwen's rewrite.
-      const newHtml = markdownToHtml(data.text);
+      const newHtml = markdownToHtml(cleanGeneratedMarkdown(data.text));
 
       patch(article.id, {
         contentHtml: newHtml,

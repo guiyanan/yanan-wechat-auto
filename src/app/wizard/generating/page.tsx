@@ -17,6 +17,7 @@ import { getAllProducts } from "@/lib/articles";
 import { mergeProducts } from "@/lib/productCatalog";
 import { markdownToHtml } from "@/lib/markdown";
 import { applyProductImagesToHtml } from "@/lib/productImages";
+import { cleanGeneratedMarkdown } from "@/lib/generatedMarkdown";
 import {
   BatchGeneratingProgress,
   type BatchJob,
@@ -330,7 +331,7 @@ export default function GeneratingPage() {
               } else if (e.type === "body-delta") {
                 bodyText += e.delta;
                 updateJob(spec.key, {
-                  previewHtml: markdownToHtml(bodyText),
+                  previewHtml: markdownToHtml(cleanGeneratedMarkdown(bodyText)),
                   title: `${spec.angleName} · ${spec.styleName}`,
                 });
               } else if (e.type === "result") {
@@ -348,7 +349,7 @@ export default function GeneratingPage() {
           }
         }
 
-        result.body = bodyText || result.body;
+        result.body = cleanGeneratedMarkdown(bodyText || result.body);
 
         const rawContentHtml = markdownToHtml(result.body);
         const imageResult = productSnapshot
