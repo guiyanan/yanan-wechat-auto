@@ -4,7 +4,7 @@
  * Pure functions, no third-party dependencies. Covers the subset of
  * Markdown that Qwen actually emits for WeChat article bodies:
  *
- *   - Headings: # / ## / ###
+ *   - Headings: # / ## / ### (####+ is normalised to ###)
  *   - Paragraphs (blank-line separated)
  *   - Inline: **bold**, *italic*
  *   - Lists: `- item` (ul) and `1. item` (ol)
@@ -65,11 +65,11 @@ export function markdownToHtml(md: string): string {
 
   // Qwen sometimes glues a heading onto the end of the previous paragraph,
   // e.g. "...前段结尾。 ## 下一标题" with just one space. Promote those
-  // inline `#{1,3} ` markers to block-level by injecting a blank line
-  // before them. The `#{1,3}\s` form (with the trailing space) ensures we
+  // inline `#{1,6} ` markers to block-level by injecting a blank line
+  // before them. The `#{1,6}\s` form (with the trailing space) ensures we
   // don't break tokens like `C#` or `#1` that have no space after.
   normalised = normalised.replace(
-    /([^\n])[ \t]+(#{1,3}[ \t])/g,
+    /([^\n])[ \t]+(#{1,6}[ \t])/g,
     "$1\n\n$2"
   );
 
@@ -94,7 +94,14 @@ export function markdownToHtml(md: string): string {
       continue;
     }
 
-    // Heading
+    // Heading. The WeChat templates only style h1-h3, so deeper model output
+    // is treated as h3 instead of leaking raw #### text into the preview.
+    if (/^#{4,6}\s+/.test(first)) {
+      html.push(
+        `<h3>${renderInline(escapeHtml(first.replace(/^#{4,6}\s+/, "").trim()))}</h3>`
+      );
+      continue;
+    }
     if (first.startsWith("### ")) {
       html.push(`<h3>${renderInline(escapeHtml(first.slice(4).trim()))}</h3>`);
       continue;
@@ -186,7 +193,7 @@ export function parseMarkdownBlocks(md: string): MdBlock[] {
   // being misclassified as part of the previous paragraph.
   const normalised = md
     .replace(/\r\n/g, "\n")
-    .replace(/([^\n])[ \t]+(#{1,3}[ \t])/g, "$1\n\n$2");
+    .replace(/([^\n])[ \t]+(#{1,6}[ \t])/g, "$1\n\n$2");
 
   const result: MdBlock[] = [];
   for (const rawBlock of normalised.split(/\n{2,}/)) {
@@ -198,7 +205,7 @@ export function parseMarkdownBlocks(md: string): MdBlock[] {
       result.push({ type: "hr", raw: rawBlock });
       continue;
     }
-    if (/^#{1,3}\s/.test(firstTrimmed)) {
+    if (/^#{1,6}\s/.test(firstTrimmed)) {
       result.push({ type: "heading", raw: rawBlock });
       continue;
     }

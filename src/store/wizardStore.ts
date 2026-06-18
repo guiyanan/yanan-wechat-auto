@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AngleStrategy, ArticleSourceContext, ContentLength } from "@/types";
+import { AUTO_ARTICLE_COUNT } from "@/lib/generationConstants";
 
 /**
  * Wizard selection state.
@@ -16,7 +17,7 @@ import type { AngleStrategy, ArticleSourceContext, ContentLength } from "@/types
  */
 export interface WizardState {
   productId: string | null;
-  mode: "manual" | "auto-five";
+  mode: "manual" | "auto-five" | "trend-radar";
   articleCount: number;
   contentLength: ContentLength;
   angleStrategy: AngleStrategy;
@@ -26,6 +27,7 @@ export interface WizardState {
   sourcePack: ArticleSourceContext;
   setProductId: (id: string | null) => void;
   startAutoFive: (productId: string) => void;
+  startTrendRadar: (productId: string) => void;
   setMode: (mode: WizardState["mode"]) => void;
   setContentLength: (length: ContentLength) => void;
   setAngleStrategy: (strategy: AngleStrategy) => void;
@@ -41,7 +43,7 @@ export interface WizardState {
 const initialState = {
   productId: null as string | null,
   mode: "manual" as WizardState["mode"],
-  articleCount: 5,
+  articleCount: AUTO_ARTICLE_COUNT,
   contentLength: "standard" as ContentLength,
   angleStrategy: "auto" as AngleStrategy,
   angleIds: [] as string[],
@@ -49,11 +51,18 @@ const initialState = {
   styleIds: [] as string[],
   sourcePack: {
     productNotes: "",
-    competitorNotes: "",
-    trendNotes: "",
-    imageRefs: "",
+    mediaNotes: "",
   } satisfies ArticleSourceContext,
 };
+
+function normalizeAngleStrategy(strategy: unknown): AngleStrategy {
+  return strategy === "comparison" ||
+    strategy === "education" ||
+    strategy === "scenario" ||
+    strategy === "auto"
+    ? strategy
+    : initialState.angleStrategy;
+}
 
 export const useWizardStore = create<WizardState>()(
   persist(
@@ -64,14 +73,26 @@ export const useWizardStore = create<WizardState>()(
         set({
           productId,
           mode: "auto-five",
-          articleCount: 5,
+          articleCount: AUTO_ARTICLE_COUNT,
           angleIds: [],
           customAngle: "",
           styleIds: [],
+          sourcePack: initialState.sourcePack,
+        }),
+      startTrendRadar: (productId) =>
+        set({
+          productId,
+          mode: "trend-radar",
+          articleCount: AUTO_ARTICLE_COUNT,
+          angleIds: [],
+          customAngle: "",
+          styleIds: [],
+          sourcePack: initialState.sourcePack,
         }),
       setMode: (mode) => set({ mode }),
       setContentLength: (contentLength) => set({ contentLength }),
-      setAngleStrategy: (angleStrategy) => set({ angleStrategy }),
+      setAngleStrategy: (angleStrategy) =>
+        set({ angleStrategy: normalizeAngleStrategy(angleStrategy) }),
       toggleAngleId: (id) =>
         set((state) => {
           const has = state.angleIds.includes(id);
@@ -121,9 +142,10 @@ export const useWizardStore = create<WizardState>()(
       ),
       // Persisted shape evolves: v1 (single angleId/styleId) → v2 (angleIds[],
       // styleId still single) → v3 (styleIds[] also) → v4 (sourcePack)
-      // → v5 (auto-five mode) → v6 (length + angle strategy).
+      // → v5 (auto-five mode) → v6 (length + angle strategy)
+      // → v7 (trend-radar mode) → v8 (auto batches generate 3 articles).
       // Migrate gracefully so sessions don't crash on legacy data.
-      version: 6,
+      version: 8,
       migrate: (persisted, version) => {
         if (!persisted || typeof persisted !== "object") return persisted;
         const legacy = persisted as Record<string, unknown>;
@@ -154,10 +176,19 @@ export const useWizardStore = create<WizardState>()(
           legacy.sourcePack &&
           typeof legacy.sourcePack === "object" &&
           !Array.isArray(legacy.sourcePack)
-            ? {
-                ...initialState.sourcePack,
-                ...(legacy.sourcePack as Partial<ArticleSourceContext>),
-              }
+            ? (() => {
+                const raw = legacy.sourcePack as Record<string, unknown>;
+                return {
+                  productNotes:
+                    typeof raw.productNotes === "string"
+                      ? raw.productNotes
+                      : initialState.sourcePack.productNotes,
+                  mediaNotes:
+                    typeof raw.mediaNotes === "string"
+                      ? raw.mediaNotes
+                      : initialState.sourcePack.mediaNotes,
+                } satisfies ArticleSourceContext;
+              })()
             : initialState.sourcePack;
 
         const contentLength =
@@ -167,14 +198,19 @@ export const useWizardStore = create<WizardState>()(
             ? legacy.contentLength
             : initialState.contentLength;
 
-        const angleStrategy =
-          legacy.angleStrategy === "auto" ||
-          legacy.angleStrategy === "comparison" ||
-          legacy.angleStrategy === "education" ||
-          legacy.angleStrategy === "scenario" ||
-          legacy.angleStrategy === "trend"
-            ? legacy.angleStrategy
-            : initialState.angleStrategy;
+        const angleStrategy = normalizeAngleStrategy(legacy.angleStrategy);
+        const mode =
+          legacy.mode === "auto-five" ||
+          legacy.mode === "trend-radar" ||
+          legacy.mode === "manual"
+            ? legacy.mode
+            : initialState.mode;
+        const articleCount =
+          mode === "auto-five" || mode === "trend-radar"
+            ? AUTO_ARTICLE_COUNT
+            : typeof legacy.articleCount === "number"
+              ? legacy.articleCount
+              : initialState.articleCount;
 
         // Always run through the shape transform on any version < 4 so a
         // legacy single-field store gets normalized; a v3+ store is returned
@@ -183,14 +219,8 @@ export const useWizardStore = create<WizardState>()(
           return {
             productId:
               typeof legacy.productId === "string" ? legacy.productId : null,
-            mode:
-              legacy.mode === "auto-five" || legacy.mode === "manual"
-                ? legacy.mode
-                : initialState.mode,
-            articleCount:
-              typeof legacy.articleCount === "number"
-                ? legacy.articleCount
-                : initialState.articleCount,
+            mode,
+            articleCount,
             contentLength,
             angleStrategy,
             angleIds,
@@ -203,6 +233,8 @@ export const useWizardStore = create<WizardState>()(
         return {
           ...initialState,
           ...(persisted as Partial<WizardState>),
+          mode,
+          articleCount,
           contentLength,
           angleStrategy,
         } as Partial<WizardState>;

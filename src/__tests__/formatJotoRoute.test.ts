@@ -18,6 +18,7 @@ function req(body: unknown): Request {
 
 describe("/api/format-joto", () => {
   afterEach(() => {
+    delete process.env.DEEPSEEK_API_KEY;
     completeChatMock.mockReset();
   });
 
@@ -27,6 +28,7 @@ describe("/api/format-joto", () => {
   });
 
   it("returns Qwen enhanced html when the model responds", async () => {
+    process.env.DEEPSEEK_API_KEY = "sk-deepseek-test";
     completeChatMock.mockResolvedValueOnce(
       JSON.stringify({
         title: "AI 画得美，为什么还不够？",
@@ -52,10 +54,15 @@ describe("/api/format-joto", () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.mode).toBe("qwen");
+    expect(json.mode).toBe("deepseek");
     expect(json.title).toBe("AI 画得美，为什么还不够？");
     expect(json.contentHtml).toContain("<h2>先把问题说清楚</h2>");
     expect(json.contentHtml).not.toContain("**");
+    expect(completeChatMock.mock.calls[0][0]).toMatchObject({
+      model: "deepseek-v4-pro",
+      apiKey: "sk-deepseek-test",
+      baseURL: "https://api.deepseek.com",
+    });
   });
 
   it("falls back to local formatting when Qwen fails", async () => {
@@ -94,7 +101,7 @@ describe("/api/format-joto", () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.mode).toBe("qwen");
+    expect(json.mode).toBe("deepseek");
     expect(json.contentHtml).not.toContain("<strong>");
     expect(json.contentHtml).not.toContain("**");
     expect(json.contentHtml).not.toContain("##");

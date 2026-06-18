@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 import {
   getDefaultAuthor,
   getOptionalDefaultThumbMediaId,
@@ -35,6 +36,8 @@ interface PushDraftRequest {
   articleId?: string;
   /** Cover media_id from WeChat material library */
   thumbMediaId?: string;
+  /** Selected cover image URL, such as a 300x300 Unsplash CDN image. */
+  coverImageUrl?: string;
   /** Product name for auto-generated cover */
   productName?: string;
   /** Cover style label for auto-generated cover */
@@ -88,6 +91,22 @@ async function replaceLocalJotoImagesForWechat(html: string): Promise<{
   };
 }
 
+async function fetchRemoteCoverPng(url: string): Promise<Buffer | null> {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const bytes = Buffer.from(await res.arrayBuffer());
+    return await sharp(bytes)
+      .resize(300, 300, { fit: "cover", position: "attention" })
+      .png()
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
 function inferImageMimeType(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === ".png") return "image/png";
@@ -130,13 +149,19 @@ export async function POST(req: Request) {
     let thumbMediaId =
       body.thumbMediaId?.trim() || getOptionalDefaultThumbMediaId();
     let generatedCover = false;
+    let remoteCover = false;
 
     if (!thumbMediaId) {
-      const coverPng = await generateWechatCoverPng({
-        title: body.title,
-        productName: body.productName,
-        styleLabel: body.coverStyleLabel,
-      });
+      const remoteCoverPng = body.coverImageUrl?.trim()
+        ? await fetchRemoteCoverPng(body.coverImageUrl.trim())
+        : null;
+      const coverPng =
+        remoteCoverPng ??
+        (await generateWechatCoverPng({
+          title: body.title,
+          productName: body.productName,
+          styleLabel: body.coverStyleLabel,
+        }));
       const upload = await uploadThumbMaterial(
         coverPng,
         `${sanitizeFilename(body.articleId || body.title)}.png`
@@ -154,7 +179,8 @@ export async function POST(req: Request) {
       }
 
       thumbMediaId = upload.mediaId;
-      generatedCover = true;
+      remoteCover = Boolean(remoteCoverPng);
+      generatedCover = !remoteCover;
     }
 
     // Push to WeChat draft box
@@ -179,6 +205,7 @@ export async function POST(req: Request) {
       mediaId: result.mediaId,
       thumbMediaId,
       generatedCover,
+      remoteCover,
       uploadedContentImages,
       author,
     });

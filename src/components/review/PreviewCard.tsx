@@ -18,6 +18,7 @@ export function PreviewCard({ article, account }: PreviewCardProps) {
   });
   const theme =
     article.layoutTheme ?? defaultThemeForArticleType(articleType);
+  const isTrendArticle = article.generationMeta?.mode === "trend-radar";
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -30,8 +31,8 @@ export function PreviewCard({ article, account }: PreviewCardProps) {
           contentHtml={article.contentHtml}
           coverUrl={cover}
           author={article.createdBy}
-          theme={theme}
-          decorate
+          theme={isTrendArticle ? "minimal" : theme}
+          decorate={!isTrendArticle}
           minHeight={760}
         />
       </div>

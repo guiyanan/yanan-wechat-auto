@@ -208,11 +208,12 @@ export function defaultThemeForArticleType(
     case "产品介绍":
     case "产品差异":
     case "竞品对比":
-    case "时事热点":
     case "产品推广":
     case "场景推广":
     case "峰会消息":
       return "joto";
+    case "时事热点":
+      return "minimal";
     default:
       return "joto";
   }

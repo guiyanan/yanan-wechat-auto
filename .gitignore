@@ -45,3 +45,6 @@ next-env.d.ts
 .playwright-mcp/
 phase*.png
 joto-landing.png
+
+# 对照稿输出
+output/

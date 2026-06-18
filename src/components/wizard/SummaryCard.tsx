@@ -3,11 +3,10 @@
 import { FileText, Lightbulb, PenLine, Layers, Ruler } from "lucide-react";
 import type { Product } from "@/types";
 import {
-  ANGLE_STRATEGY_OPTIONS,
   CONTENT_LENGTH_OPTIONS,
-  getAngleStrategyOption,
   getContentLengthOption,
 } from "@/lib/contentSettings";
+import { AUTO_ARTICLE_COUNT } from "@/lib/generationConstants";
 import { cn } from "@/lib/utils";
 import { useWizardStore } from "@/store/wizardStore";
 
@@ -15,13 +14,16 @@ interface SummaryCardProps {
   product: Product | null;
 }
 
+const FIXED_ENTRY_LABELS = [
+  "场景痛点入口",
+  "传统做法入口",
+  "产品能力/适用人群入口",
+];
+
 export function SummaryCard({ product }: SummaryCardProps) {
   const contentLength = useWizardStore((s) => s.contentLength);
   const setContentLength = useWizardStore((s) => s.setContentLength);
-  const angleStrategy = useWizardStore((s) => s.angleStrategy);
-  const setAngleStrategy = useWizardStore((s) => s.setAngleStrategy);
   const lengthOption = getContentLengthOption(contentLength);
-  const strategyOption = getAngleStrategyOption(angleStrategy);
 
   return (
     <aside className="sticky top-20 w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -72,29 +74,25 @@ export function SummaryCard({ product }: SummaryCardProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                角度 · {strategyOption.shortLabel}
+                角度 · 固定
               </p>
               <p className="mt-0.5 text-sm font-medium text-slate-900">
-                {strategyOption.label}
+                固定三入口
               </p>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                {strategyOption.description}
+                每篇都完整覆盖产品链路,只从不同入口切入。
               </p>
               <div className="mt-3 grid gap-1.5">
-                {ANGLE_STRATEGY_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setAngleStrategy(option.id)}
-                    className={cn(
-                      "rounded-md border px-2.5 py-1.5 text-left text-xs font-medium transition-colors",
-                      angleStrategy === option.id
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                    )}
+                {FIXED_ENTRY_LABELS.map((label, index) => (
+                  <div
+                    key={label}
+                    className="flex min-h-9 items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700"
                   >
-                    {option.label}
-                  </button>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white text-[10px] font-semibold text-blue-600">
+                      {index + 1}
+                    </span>
+                    <span>{label}</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -169,10 +167,10 @@ export function SummaryCard({ product }: SummaryCardProps) {
             </p>
           </div>
           <p className="mt-1 text-sm font-medium text-emerald-900">
-            将生成 5 篇独立文章
+            将生成 {AUTO_ARTICLE_COUNT} 篇独立文章
           </p>
           <p className="mt-0.5 text-xs text-emerald-700">
-            {lengthOption.label} × {strategyOption.label}
+            {lengthOption.label} × 固定三入口
           </p>
         </li>
       </ul>

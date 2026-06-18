@@ -6,6 +6,7 @@ import {
   runStructurePreservingPipeline,
   type PipelineResult,
 } from "@/lib/humanize/pipeline";
+import { getDeepSeekChatOptions } from "@/lib/deepseek";
 import { ARTICLE_TYPES, type ArticleType } from "@/lib/articleType";
 import { detectScore } from "@/lib/humanize/detectScore";
 import { textSimilarity } from "@/lib/humanize/similarity";
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
         .join("\n"),
       articleType: input.articleType,
+      ...getDeepSeekChatOptions(),
       humanize,
     });
 

@@ -13,11 +13,22 @@ import { useWizardStore } from "@/store/wizardStore";
 import { useArticleStore } from "@/store/articleStore";
 import { useLearnedStyleStore } from "@/store/learnedStyleStore";
 import { useProductStore } from "@/store/productStore";
+import { AUTO_ARTICLE_COUNT } from "@/lib/generationConstants";
+import { abortWithReason, isAbortLikeError } from "@/lib/abort";
 import { getAllProducts } from "@/lib/articles";
 import { mergeProducts } from "@/lib/productCatalog";
 import { markdownToHtml } from "@/lib/markdown";
 import { applyProductImagesToHtml } from "@/lib/productImages";
-import { cleanGeneratedMarkdown } from "@/lib/generatedMarkdown";
+import {
+  cleanGeneratedMarkdown,
+  resolveGeneratedArticleTitle,
+} from "@/lib/generatedMarkdown";
+import { finalizeGeneratedBody } from "@/lib/generatedArticleBody";
+import {
+  buildProductStylePicks,
+  buildTrendStylePicks,
+} from "@/lib/learnedStyles";
+import { pickTrendSourcesForArticle } from "@/lib/trends/hooks";
 import {
   BatchGeneratingProgress,
   type BatchJob,
@@ -27,9 +38,10 @@ import anglesData from "@/data/angles.json";
 import stylesData from "@/data/styles.json";
 import type {
   Angle,
-  LearnedWritingStyle,
   PipelineStageId,
+  TrafficHookMode,
   TopicPlan,
+  TrendSearchResult,
   WritingStyle,
 } from "@/types";
 
@@ -65,50 +77,14 @@ interface JobSpec {
   styleOverride?: Pick<WritingStyle, "id" | "name" | "promptProfile" | "sampleText">;
   styleSource: "official" | "learned";
   learnedStyleId?: string;
-}
-
-function learnedToWritingStyle(style: LearnedWritingStyle): Pick<WritingStyle, "id" | "name" | "promptProfile" | "sampleText"> {
-  return {
-    id: style.id,
-    name: style.name,
-    promptProfile: [
-      style.toneProfile,
-      `标题结构:${style.titlePattern}`,
-      `开头方式:${style.openingPattern}`,
-      `段落节奏:${style.paragraphPattern}`,
-      `金句方式:${style.keySentencePattern}`,
-      "必须学习表达方式,不得照抄来源文章内容。",
-    ].join("\n"),
-    sampleText: style.sampleDigest,
-  };
-}
-
-function pickStyleForIndex(
-  idx: number,
-  learnedStyles: LearnedWritingStyle[]
-): {
-  styleId: string;
-  styleName: string;
-  styleOverride?: Pick<WritingStyle, "id" | "name" | "promptProfile" | "sampleText">;
-  styleSource: "official" | "learned";
-  learnedStyleId?: string;
-} {
-  const official = STYLES.find((s) => s.id === "style-joto") ?? STYLES[0];
-  if (learnedStyles.length === 0 || idx % 2 === 0) {
-    return {
-      styleId: official.id,
-      styleName: official.name,
-      styleSource: "official",
-    };
-  }
-  const learned = learnedStyles[idx % learnedStyles.length];
-  return {
-    styleId: learned.id,
-    styleName: learned.name,
-    styleOverride: learnedToWritingStyle(learned),
-    styleSource: "learned",
-    learnedStyleId: learned.id,
-  };
+  mode?: "manual" | "auto-five" | "trend-radar";
+  trendStyleId?: string;
+  trendStyleName?: string;
+  trendStyleSource?: "learned" | "fallback";
+  sourceTrace?: TrendSearchResult[];
+  trafficHookLabel?: string;
+  trafficHookMode?: TrafficHookMode;
+  mainstreamAnchor?: string;
 }
 
 export default function GeneratingPage() {
@@ -138,7 +114,9 @@ export default function GeneratingPage() {
   const [jobs, setJobs] = useState<BatchJob[]>([]);
   const [selectedJobKey, setSelectedJobKey] = useState<string | null>(null);
   const [allDone, setAllDone] = useState(false);
-  const [planning, setPlanning] = useState(mode === "auto-five");
+  const [planning, setPlanning] = useState(
+    mode === "auto-five" || mode === "trend-radar"
+  );
   const [topicPlans, setTopicPlans] = useState<TopicPlan[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const startedRef = useRef(false);
@@ -153,7 +131,13 @@ export default function GeneratingPage() {
     !!productId &&
     productServerLoaded &&
     styleServerLoaded &&
-    (mode === "auto-five" || (hasAngle && styleIds.length > 0));
+    (mode === "auto-five" ||
+      mode === "trend-radar" ||
+      (hasAngle && styleIds.length > 0));
+  const targetArticleCount =
+    mode === "auto-five" || mode === "trend-radar"
+      ? AUTO_ARTICLE_COUNT
+      : articleCount || AUTO_ARTICLE_COUNT;
 
   useEffect(() => {
     void loadProducts();
@@ -171,6 +155,9 @@ export default function GeneratingPage() {
       : angleIds.map((aid) => {
           const a = ANGLES.find((x) => x.id === aid);
           return { id: aid, name: a?.name ?? aid, custom: "" };
+        }).filter((angle) => {
+          const source = angle.id ? ANGLES.find((x) => x.id === angle.id) : null;
+          return source?.category !== "时事热点";
         });
 
     for (const angle of effectiveAngles) {
@@ -184,6 +171,7 @@ export default function GeneratingPage() {
           styleId: sid,
           styleName: s?.name ?? sid,
           styleSource: "official",
+          mode: "manual",
         });
       }
     }
@@ -192,19 +180,52 @@ export default function GeneratingPage() {
 
   const buildAutoJobSpecs = useCallback(
     (plans: TopicPlan[]): JobSpec[] => {
-      return plans.slice(0, articleCount || 5).map((plan, idx) => {
-        const picked = pickStyleForIndex(idx, learnedStyles);
+      const targetPlans = plans.slice(0, targetArticleCount);
+      const official = STYLES.find((s) => s.id === "style-joto") ?? STYLES[0];
+      const stylePicks = buildProductStylePicks(
+        targetPlans.length,
+        learnedStyles,
+        official
+      );
+      return targetPlans.map((plan, idx) => {
+        const picked = stylePicks[idx];
         return {
           key: `${plan.id}-${picked.styleId}-${idx}`,
           angleId: null,
           angleName: plan.angleLabel,
           customAngle: plan.angleLabel,
           topicPlan: plan,
+          mode: "auto-five",
           ...picked,
         };
       });
     },
-    [articleCount, learnedStyles]
+    [learnedStyles, targetArticleCount]
+  );
+
+  const buildTrendJobSpecs = useCallback(
+    (plans: TopicPlan[], trends: TrendSearchResult[]): JobSpec[] => {
+      const targetPlans = plans.slice(0, targetArticleCount);
+      const stylePicks = buildTrendStylePicks(targetPlans.length, learnedStyles);
+      return targetPlans.map((plan, idx) => {
+        const picked = stylePicks[idx];
+        const trafficHookLabel = plan.trafficHookLabel ?? plan.angleLabel;
+        return {
+          key: `${plan.id}-${picked.styleId}-${idx}`,
+          angleId: null,
+          angleName: trafficHookLabel,
+          customAngle: "",
+          topicPlan: plan,
+          mode: "trend-radar",
+          sourceTrace: pickTrendSourcesForArticle(trends, idx),
+          trafficHookLabel,
+          trafficHookMode: plan.trafficHookMode,
+          mainstreamAnchor: plan.mainstreamAnchor,
+          ...picked,
+        };
+      });
+    },
+    [learnedStyles, targetArticleCount]
   );
 
   const updateJob = useCallback(
@@ -219,27 +240,46 @@ export default function GeneratingPage() {
   const runSingleJob = useCallback(
     async (spec: JobSpec, signal: AbortSignal): Promise<void> => {
       updateJob(spec.key, { status: "running", currentStage: "outline" });
+      const specMode =
+        spec.mode ??
+        (mode === "trend-radar"
+          ? "trend-radar"
+          : mode === "auto-five"
+            ? "auto-five"
+            : "manual");
+      const isTrendJob = specMode === "trend-radar";
+      const trafficHookLabel =
+        spec.trafficHookLabel ??
+        spec.topicPlan?.trafficHookLabel ??
+        (isTrendJob ? spec.angleName : undefined);
 
       const draft = createDraft({
         productId: productId!,
         angleId: spec.angleId ?? undefined,
-        customAngle: spec.customAngle || undefined,
+        customAngle: isTrendJob ? undefined : spec.customAngle || undefined,
         styleId: spec.styleId,
         batchId: batchIdRef.current,
         stage: "batch",
-        layoutTheme: "joto",
+        layoutTheme: isTrendJob ? "minimal" : "joto",
         sourceContext: sourcePack,
         generationMeta: {
-          mode: mode === "auto-five" ? "auto-five" : "manual",
+          mode: specMode,
           angleLabel: spec.topicPlan?.angleLabel ?? spec.angleName,
           angleReason: spec.topicPlan?.reason,
           topicPlan: spec.topicPlan,
           contentLength,
-          angleStrategy,
+          angleStrategy: isTrendJob ? undefined : angleStrategy,
+          trafficHookLabel,
+          trafficHookMode: spec.trafficHookMode ?? spec.topicPlan?.trafficHookMode,
+          mainstreamAnchor: spec.mainstreamAnchor ?? spec.topicPlan?.mainstreamAnchor,
           styleSource: spec.styleSource,
           learnedStyleId: spec.learnedStyleId,
           learnedStyleName:
             spec.styleSource === "learned" ? spec.styleName : undefined,
+          trendStyleId: spec.trendStyleId,
+          trendStyleName: spec.trendStyleName,
+          trendStyleSource: spec.trendStyleSource,
+          sourceTrace: spec.sourceTrace,
         },
       });
 
@@ -253,14 +293,18 @@ export default function GeneratingPage() {
             productId,
             productSnapshot,
             angleId: spec.angleId ?? undefined,
-            customAngle: spec.customAngle || undefined,
+            customAngle: isTrendJob ? undefined : spec.customAngle || undefined,
             styleId: spec.styleId,
+            mode: specMode,
             topicPlan: spec.topicPlan,
             styleOverride: spec.styleOverride,
             articleId: draft.id,
             sourcePack,
             contentLength,
-            angleStrategy,
+            angleStrategy: isTrendJob ? undefined : angleStrategy,
+            trendResults: spec.sourceTrace,
+            trendStyleName: spec.trendStyleName,
+            trendStyleSource: spec.trendStyleSource,
           }),
           signal,
         });
@@ -349,34 +393,53 @@ export default function GeneratingPage() {
           }
         }
 
-        result.body = cleanGeneratedMarkdown(bodyText || result.body);
+        const rawGeneratedBody = bodyText || result.body;
+        result.body = finalizeGeneratedBody({
+          rawMarkdown: rawGeneratedBody,
+          isTrendArticle: isTrendJob,
+          contentLength,
+          trendContext: {
+            product: productSnapshot?.name,
+            productDesc: productSnapshot?.description,
+          },
+        });
+        const resolvedTitle = resolveGeneratedArticleTitle({
+          titles: result.titles,
+          bodyMarkdown: rawGeneratedBody,
+          fallbackTitle: draft.title,
+        });
 
         const rawContentHtml = markdownToHtml(result.body);
-        const imageResult = productSnapshot
+        const imageResult = !isTrendJob && productSnapshot
           ? applyProductImagesToHtml(rawContentHtml, productSnapshot, {
               contentLength,
             })
           : { html: rawContentHtml, insertedAssets: [], missingSlots: 0 };
 
         patch(draft.id, {
-          title: result.titles[0] ?? draft.title,
-          titleCandidates: result.titles,
+          title: resolvedTitle.title,
+          titleCandidates: resolvedTitle.titleCandidates,
           contentHtml: imageResult.html,
           coverImageUrl: result.covers[0]?.url,
           coverCandidates: result.covers.map((c) => c.url),
           generationMeta: {
             ...draft.generationMeta,
-            mode:
-              draft.generationMeta?.mode ??
-              (mode === "auto-five" ? "auto-five" : "manual"),
+            mode: specMode,
             angleLabel:
               draft.generationMeta?.angleLabel ??
               spec.topicPlan?.angleLabel ??
               spec.angleName,
+            trafficHookLabel,
+            trafficHookMode: spec.trafficHookMode ?? spec.topicPlan?.trafficHookMode,
+            mainstreamAnchor: spec.mainstreamAnchor ?? spec.topicPlan?.mainstreamAnchor,
             styleSource: draft.generationMeta?.styleSource ?? spec.styleSource,
             imageAssetIds: imageResult.insertedAssets.map((asset) => asset.id),
             imageSlotCount: imageResult.insertedAssets.length,
             missingImageSlots: imageResult.missingSlots,
+            trendStyleId: spec.trendStyleId,
+            trendStyleName: spec.trendStyleName,
+            trendStyleSource: spec.trendStyleSource,
+            sourceTrace: spec.sourceTrace,
           },
           aiScore: {
             value: 0,
@@ -395,10 +458,10 @@ export default function GeneratingPage() {
           completedStages: TOTAL_STAGES,
           currentStage: null,
           previewHtml: imageResult.html,
-          title: result.titles[0] ?? `${spec.angleName} · ${spec.styleName}`,
+          title: resolvedTitle.title,
         });
       } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (isAbortLikeError(err)) return;
         updateJob(spec.key, {
           status: "failed",
           error: err instanceof Error ? err.message : String(err),
@@ -418,8 +481,31 @@ export default function GeneratingPage() {
     ]
   );
 
+  const fetchTrendResults = useCallback(
+    async (signal: AbortSignal): Promise<TrendSearchResult[]> => {
+      const res = await fetch("/api/trends/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          productSnapshot,
+          sourcePack,
+          count: 12,
+        }),
+        signal,
+      });
+      if (!res.ok) throw new Error(`热点抓取失败: HTTP ${res.status}`);
+      const data = (await res.json()) as { results?: TrendSearchResult[] };
+      return Array.isArray(data.results) ? data.results : [];
+    },
+    [productId, productSnapshot, sourcePack]
+  );
+
   const fetchTopicPlans = useCallback(
-    async (signal: AbortSignal): Promise<TopicPlan[]> => {
+    async (
+      signal: AbortSignal,
+      trendResults?: TrendSearchResult[]
+    ): Promise<TopicPlan[]> => {
       const res = await fetch("/api/topic-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -428,17 +514,30 @@ export default function GeneratingPage() {
           productSnapshot,
           sourcePack,
           contentLength,
-          angleStrategy,
+          angleStrategy: mode === "trend-radar" ? undefined : angleStrategy,
+          mode,
+          trendResults,
+          articleCount: targetArticleCount,
         }),
         signal,
       });
       if (!res.ok) throw new Error(`选题规划失败: HTTP ${res.status}`);
       const data = (await res.json()) as { plans?: TopicPlan[] };
       const plans = Array.isArray(data.plans) ? data.plans : [];
-      if (plans.length < 5) throw new Error("选题规划少于 5 个");
-      return plans.slice(0, 5);
+      if (plans.length < targetArticleCount) {
+        throw new Error(`选题规划少于 ${targetArticleCount} 个`);
+      }
+      return plans.slice(0, targetArticleCount);
     },
-    [angleStrategy, contentLength, productId, productSnapshot, sourcePack]
+    [
+      angleStrategy,
+      contentLength,
+      mode,
+      productId,
+      productSnapshot,
+      sourcePack,
+      targetArticleCount,
+    ]
   );
 
   const runBatch = useCallback(async () => {
@@ -454,70 +553,107 @@ export default function GeneratingPage() {
         : Math.random().toString(36).slice(2, 10);
     batchIdRef.current = `batch-${tsPart}-${randPart}`;
 
-    let specs: JobSpec[] = [];
-    if (mode === "auto-five") {
-      setPlanning(true);
-      try {
+    try {
+      let specs: JobSpec[] = [];
+      if (mode === "auto-five") {
+        setPlanning(true);
         const plans = await fetchTopicPlans(controller.signal);
         setTopicPlans(plans);
         specs = buildAutoJobSpecs(plans);
-      } finally {
+      } else if (mode === "trend-radar") {
+        setPlanning(true);
+        const trends = await fetchTrendResults(controller.signal);
+        const plans = await fetchTopicPlans(controller.signal, trends);
+        setTopicPlans(plans);
+        specs = buildTrendJobSpecs(plans, trends);
+      } else {
+        specs = buildManualJobSpecs();
+        setTopicPlans([]);
         setPlanning(false);
       }
-    } else {
-      specs = buildManualJobSpecs();
-      setTopicPlans([]);
+
+      const initialJobs: BatchJob[] = specs.map((s) => ({
+        key: s.key,
+        angleName: s.angleName,
+        styleName: s.styleName,
+        status: "queued",
+        currentStage: null,
+        completedStages: 0,
+        totalStages: TOTAL_STAGES,
+      }));
+      setJobs(initialJobs);
+      setSelectedJobKey(initialJobs[0]?.key ?? null);
+      setAllDone(false);
+
+      // Save batch info to sessionStorage for Dashboard banner
+      const batchLabels = specs.map((s) => `${s.angleName}×${s.styleName}`);
+      sessionStorage.setItem(
+        "joto-last-batch",
+        JSON.stringify({ count: specs.length, labels: batchLabels, ts: Date.now() })
+      );
+
+      const queue = [...specs];
+      const running = new Set<string>();
+
+      async function startNext(): Promise<void> {
+        if (controller.signal.aborted) return;
+        if (queue.length === 0) return;
+        if (running.size >= MAX_CONCURRENCY) return;
+
+        const spec = queue.shift()!;
+        running.add(spec.key);
+
+        try {
+          await runSingleJob(spec, controller.signal);
+        } finally {
+          running.delete(spec.key);
+          await startNext();
+        }
+      }
+
+      const starters = Array.from(
+        { length: Math.min(MAX_CONCURRENCY, specs.length) },
+        () => startNext()
+      );
+      await Promise.all(starters);
+
+      if (!controller.signal.aborted) {
+        setAllDone(true);
+      }
+    } catch (err) {
+      if (isAbortLikeError(err) || controller.signal.aborted) return;
+      const message = err instanceof Error ? err.message : String(err);
+      setJobs((prev) => {
+        if (prev.length > 0) return prev;
+        return [
+          {
+            key: "planning",
+            angleName: "选题规划",
+            styleName: "生成前准备",
+            status: "failed",
+            currentStage: null,
+            completedStages: 0,
+            totalStages: TOTAL_STAGES,
+            error: message,
+          },
+        ];
+      });
+      setSelectedJobKey((prev) => prev ?? "planning");
+    } finally {
       setPlanning(false);
-    }
-    const initialJobs: BatchJob[] = specs.map((s) => ({
-      key: s.key,
-      angleName: s.angleName,
-      styleName: s.styleName,
-      status: "queued",
-      currentStage: null,
-      completedStages: 0,
-      totalStages: TOTAL_STAGES,
-    }));
-    setJobs(initialJobs);
-    setSelectedJobKey(initialJobs[0]?.key ?? null);
-    setAllDone(false);
-
-    // Save batch info to sessionStorage for Dashboard banner
-    const batchLabels = specs.map((s) => `${s.angleName}×${s.styleName}`);
-    sessionStorage.setItem(
-      "joto-last-batch",
-      JSON.stringify({ count: specs.length, labels: batchLabels, ts: Date.now() })
-    );
-
-    const queue = [...specs];
-    const running = new Set<string>();
-
-    async function startNext(): Promise<void> {
-      if (controller.signal.aborted) return;
-      if (queue.length === 0) return;
-      if (running.size >= MAX_CONCURRENCY) return;
-
-      const spec = queue.shift()!;
-      running.add(spec.key);
-
-      try {
-        await runSingleJob(spec, controller.signal);
-      } finally {
-        running.delete(spec.key);
-        await startNext();
+      if (abortRef.current === controller) {
+        abortRef.current = null;
       }
     }
-
-    const starters = Array.from(
-      { length: Math.min(MAX_CONCURRENCY, specs.length) },
-      () => startNext()
-    );
-    await Promise.all(starters);
-
-    if (!controller.signal.aborted) {
-      setAllDone(true);
-    }
-  }, [buildAutoJobSpecs, buildManualJobSpecs, fetchTopicPlans, mode, runSingleJob]);
+  }, [
+    buildAutoJobSpecs,
+    buildManualJobSpecs,
+    buildTrendJobSpecs,
+    fetchTopicPlans,
+    fetchTrendResults,
+    mode,
+    runSingleJob,
+  ]);
 
   useEffect(() => {
     if (!ready) return;
@@ -525,7 +661,7 @@ export default function GeneratingPage() {
     startedRef.current = true;
     runBatch();
     return () => {
-      abortRef.current?.abort();
+      abortWithReason(abortRef.current, "generation-page-left");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
@@ -542,12 +678,12 @@ export default function GeneratingPage() {
   }, [allDone, router]);
 
   function cancelAndBack() {
-    abortRef.current?.abort();
+    abortWithReason(abortRef.current, "user-left-generation");
     router.push(batchIdRef.current ? `/batch/${batchIdRef.current}` : "/wizard/product");
   }
 
   function retry() {
-    abortRef.current?.abort();
+    abortWithReason(abortRef.current, "retry-generation");
     startedRef.current = false;
     setTimeout(() => {
       startedRef.current = true;
@@ -567,7 +703,7 @@ export default function GeneratingPage() {
             缺少前置选项
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            请先完成 Wizard 前三步(产品 / 角度 / 风格)。
+            请先选择产品并确认生成方式。
           </p>
           <Link
             href="/wizard/product"
@@ -605,26 +741,38 @@ export default function GeneratingPage() {
               并发生成 · {jobCount} 篇文章
             </div>
             <h1 className="text-xl font-semibold text-white">
-              {mode === "auto-five"
-                ? "系统智能选题,自动生成 5 篇"
+              {mode === "trend-radar"
+                ? `正在抓热点,自动生成 ${targetArticleCount} 篇公众号观察`
+                : mode === "auto-five"
+                ? `系统智能选题,自动生成 ${targetArticleCount} 篇`
                 : "左侧切换任务,右侧看公众号排版"}
             </h1>
             <p className="text-sm leading-6 text-slate-400">
-              {mode === "auto-five"
-                ? "先根据产品资料规划 5 个不同角度,再随机混用官方风格和学习风格并发生成。"
+              {mode === "trend-radar"
+                ? "先筛选相关外部话题和封面图,再生成产品团队写给用户的完整公众号观察文。"
+                : mode === "auto-five"
+                ? `先根据产品资料规划 ${targetArticleCount} 个不同角度,再随机混用官方风格和学习风格并发生成。`
                 : "每篇文章经过大纲、正文、标题、封面、事实核查。正文流式返回时会同步渲染成 JOTO 公众号白底模板。"}
             </p>
           </header>
 
-          {mode === "auto-five" && (
+          {(mode === "auto-five" || mode === "trend-radar") && (
             <section className="rounded-xl border border-slate-800 bg-slate-900 p-4">
               <p className="text-xs font-medium text-blue-300">
-                {planning ? "正在判断最适合的 5 个角度…" : "智能选题"}
+                {planning
+                  ? mode === "trend-radar"
+                    ? `正在抓取热点并规划 ${targetArticleCount} 个引流切口…`
+                    : `正在判断最适合的 ${targetArticleCount} 个角度…`
+                  : mode === "trend-radar"
+                    ? "引流切口"
+                    : "智能选题"}
               </p>
               <div className="mt-3 space-y-2">
                 {topicPlans.length === 0 ? (
                   <p className="text-xs text-slate-500">
-                    选题完成后会在这里显示每篇文章的写作方向。
+                    {mode === "trend-radar"
+                      ? "热点筛选完成后会在这里显示每篇公众号观察文的引流切口。"
+                      : "选题完成后会在这里显示固定三入口的文章规划。"}
                   </p>
                 ) : (
                   topicPlans.map((plan, idx) => (
@@ -633,7 +781,10 @@ export default function GeneratingPage() {
                       className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2"
                     >
                       <p className="text-xs font-semibold text-slate-100">
-                        {idx + 1}. {plan.angleLabel}
+                        {idx + 1}.{" "}
+                        {mode === "trend-radar"
+                          ? plan.trafficHookLabel ?? plan.angleLabel
+                          : plan.angleLabel}
                       </p>
                       <p className="mt-1 text-[11px] leading-4 text-slate-500">
                         {plan.reason}
@@ -744,8 +895,8 @@ export default function GeneratingPage() {
           <WechatArticleFrame
             title={selectedJob?.title ?? "JOTO 公众号预览"}
             contentHtml={selectedJob?.previewHtml ?? ""}
-            theme="joto"
-            decorate
+            theme={mode === "trend-radar" ? "minimal" : "joto"}
+            decorate={mode !== "trend-radar"}
             minHeight={920}
           />
         </section>

@@ -93,6 +93,7 @@ export function ArticleList({ articles, products }: ArticleListProps) {
               title: article.title,
               angleLabel:
                 article.generationMeta?.angleLabel ?? resolveAngleName(article),
+              trafficHookLabel: article.generationMeta?.trafficHookLabel,
               styleName:
                 article.generationMeta?.learnedStyleName ??
                 resolveStyleName(article),

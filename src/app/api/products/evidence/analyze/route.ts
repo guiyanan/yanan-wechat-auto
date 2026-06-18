@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Product, ProductSourceMediaAsset } from "@/types";
 import { createQwenClient } from "@/lib/qwen";
+import { getDeepSeekVisionOptions } from "@/lib/deepseek";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,13 +36,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.asset.fileType === "video") {
-    return NextResponse.json({
-      analysis: [
-        `已上传视频「${body.asset.caption || body.asset.fileName}」。`,
-        "当前会把它作为产品理解素材保存；建议补充 1-2 句：视频里展示了哪个流程、谁在用、解决了什么问题。",
-      ].join(""),
-      source: "fallback",
-    });
+    return NextResponse.json(
+      { error: "产品理解素材只支持网页截图,不再支持视频理解" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -50,10 +48,11 @@ export async function POST(req: NextRequest) {
     const mime = EXT_TO_MIME[ext] ?? "image/png";
     const bytes = await readFile(absolutePath);
     const dataUrl = `data:${mime};base64,${bytes.toString("base64")}`;
-    const client = createQwenClient();
+    const deepSeekOptions = getDeepSeekVisionOptions();
+    const client = createQwenClient(deepSeekOptions);
     const res = await client.chat.completions.create(
       {
-        model: process.env.QWEN_MODEL_VISION ?? "qwen-vl-plus",
+        model: deepSeekOptions.model,
         temperature: 0.2,
         max_tokens: 700,
         messages: [
@@ -86,7 +85,7 @@ export async function POST(req: NextRequest) {
       analysis:
         analysis ||
         `截图「${body.asset.caption || body.asset.fileName}」已保存,请补充它展示的产品页面和使用场景。`,
-      source: "qwen-vl",
+      source: "deepseek",
     });
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);

@@ -30,7 +30,8 @@ export interface ComplianceResult {
 }
 
 import type { WechatTheme } from "@/lib/wechatThemes";
-import type { AngleStrategy, ContentLength, TopicPlan } from "./topic";
+import type { AngleStrategy, ContentLength, TopicPlan, TrafficHookMode } from "./topic";
+import type { TrendSearchResult } from "./trend";
 
 /**
  * Article lifecycle stage in the batch-preview flow.
@@ -44,9 +45,6 @@ export type ArticleStage = "batch" | "main";
 
 export interface ArticleSourceContext {
   productNotes?: string;
-  competitorNotes?: string;
-  trendNotes?: string;
-  imageRefs?: string;
   mediaNotes?: string;
 }
 
@@ -58,7 +56,7 @@ export interface ArticleStoryMeta {
 }
 
 export interface ArticleGenerationMeta {
-  mode: "manual" | "auto-five" | "paste-format";
+  mode: "manual" | "auto-five" | "trend-radar" | "paste-format";
   angleLabel: string;
   angleReason?: string;
   topicPlan?: TopicPlan;
@@ -67,6 +65,13 @@ export interface ArticleGenerationMeta {
   styleSource: "official" | "learned";
   learnedStyleId?: string;
   learnedStyleName?: string;
+  trendStyleId?: string;
+  trendStyleName?: string;
+  trendStyleSource?: "learned" | "fallback";
+  trafficHookLabel?: string;
+  trafficHookMode?: TrafficHookMode;
+  mainstreamAnchor?: string;
+  sourceTrace?: TrendSearchResult[];
   imageAssetIds?: string[];
   imageSlotCount?: number;
   missingImageSlots?: number;

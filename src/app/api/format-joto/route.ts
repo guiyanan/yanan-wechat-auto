@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { completeChat } from "@/lib/qwen";
+import { getDeepSeekChatOptions } from "@/lib/deepseek";
 import { markdownToHtml } from "@/lib/markdown";
 import {
   basicFormatJotoPaste,
@@ -20,16 +21,16 @@ interface FormatRequestBody {
   author?: string;
 }
 
-interface QwenFormatPayload {
+interface DeepSeekFormatPayload {
   title?: string;
   markdown?: string;
   summary?: string;
 }
 
-function extractJsonPayload(text: string): QwenFormatPayload {
+function extractJsonPayload(text: string): DeepSeekFormatPayload {
   const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("Qwen did not return JSON");
-  return JSON.parse(match[0]) as QwenFormatPayload;
+  if (!match) throw new Error("DeepSeek did not return JSON");
+  return JSON.parse(match[0]) as DeepSeekFormatPayload;
 }
 
 function buildPrompt(body: FormatRequestBody, product: Product): string {
@@ -39,7 +40,7 @@ function buildPrompt(body: FormatRequestBody, product: Product): string {
     "硬性要求：",
     "1. 只整理、增强表达和结构，不能新增企业案例、客户名、合作关系、营收、百分比、周期、提效数字。",
     "2. 清理裸 Markdown 标记、emoji 列表符号、重复空行，不输出简单 emoji bullet。",
-    "3. 文章要像轻松的公众号产品稿：开头有钩子，中间用小标题解密，重点句用 > 引用表达，不要把普通短语加粗。",
+    "3. 文章要像轻松的公众号产品稿：开头有具体工作场景，中间用小标题解密，重点句用 > 引用表达，不要把普通短语加粗。",
     "4. 不自动加入“往期回顾”、二维码、联系方式或图片。",
     "5. 正文里最多使用 2 个 > 重点句，不要使用 **加粗** 做蓝色强调。",
     "6. 输出 JSON，不要 Markdown 代码块。",
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
 
   try {
     const response = await completeChat({
-      model: process.env.QWEN_MODEL_GENERATE ?? "qwen-plus",
+      ...getDeepSeekChatOptions(),
       messages: [
         {
           role: "system",
@@ -90,7 +91,7 @@ export async function POST(req: Request) {
     });
     const parsed = extractJsonPayload(response);
     const markdown = normaliseEnhancedMarkdown(parsed.markdown ?? "");
-    if (!markdown) throw new Error("Qwen returned empty markdown");
+    if (!markdown) throw new Error("DeepSeek returned empty markdown");
     const contentHtml = markdownToHtml(markdown);
     const fallback = basicFormatJotoPaste({
       title: parsed.title ?? body.title,
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
       contentHtml,
       summary: parsed.summary?.trim() || fallback.summary,
       warnings: [],
-      mode: "qwen",
+      mode: "deepseek",
     };
     return NextResponse.json(result);
   } catch {
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({
       ...fallback,
-      warnings: ["Qwen 不可用，已完成基础排版，可继续预览和保存。"],
+      warnings: ["DeepSeek 不可用，已完成基础排版，可继续预览和保存。"],
       mode: "fallback",
     } satisfies FormatJotoResult);
   }

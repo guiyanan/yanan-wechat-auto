@@ -155,7 +155,7 @@ export default function FormatPage() {
         aiScore: {
           value: 8,
           checkedAt: new Date().toISOString(),
-          iterations: result.mode === "qwen" ? 1 : 0,
+          iterations: result.mode !== "fallback" ? 1 : 0,
         },
         compliance: {
           limitWords: [],

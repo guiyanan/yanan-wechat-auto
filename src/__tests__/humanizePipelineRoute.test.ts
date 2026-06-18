@@ -67,7 +67,7 @@ describe("/api/humanize/pipeline · validation", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns a clear error when no DASHSCOPE_API_KEY instead of fake-passing humanize", async () => {
+  it("returns a clear error when no DEEPSEEK_API_KEY instead of fake-passing humanize", async () => {
     const res = await POST(
       makeReq({
         text: "## 测试\n\n这是一段需要 humanize 的中文正文。",
@@ -77,7 +77,7 @@ describe("/api/humanize/pipeline · validation", () => {
       }) as never
     );
     expect(res.status).toBe(401);
-    expect(await res.text()).toContain("DASHSCOPE_API_KEY");
+    expect(await res.text()).toContain("DEEPSEEK_API_KEY");
   });
 
   it("response shape on success contains text + scoreBreakdown + totalRounds", async () => {

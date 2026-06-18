@@ -13,7 +13,7 @@ export interface FormatJotoResult {
   contentHtml: string;
   summary: string;
   warnings: string[];
-  mode: "qwen" | "fallback";
+  mode: "deepseek" | "qwen" | "fallback";
 }
 
 const EMOJI_BULLET_PATTERN =

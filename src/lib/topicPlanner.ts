@@ -1,48 +1,75 @@
-import type { AngleStrategy, ContentLength, Product, TopicPlan } from "@/types";
+import type {
+  AngleStrategy,
+  ContentLength,
+  Product,
+  TopicPlan,
+  TrafficHookMode,
+  TrendSearchResult,
+} from "@/types";
+import { buildHotspotContractPrompt } from "@/lib/trendArticleContract";
 
 export interface TopicPlannerOptions {
   angleStrategy?: AngleStrategy;
   contentLength?: ContentLength;
 }
 
-const MATURE_MARKET_KEYWORDS = [
-  "notebooklm",
-  "notebook lm",
-  "google",
-  "竞品",
-  "替代",
-  "生态",
-  "价格",
-  "对比",
-  "知识库",
-  "笔记",
-  "文档",
+const TREND_RADAR_HARD_RULES =
+  [
+    buildHotspotContractPrompt(),
+    "热点稿硬约束:第一屏先写外部话题噱头,但不要硬嫁接不相干素材;前半段围绕热点、品类、平替、场景或用户困惑建立阅读入口;中后段必须进入产品团队视角和我们的回应,解释产品承接了哪个真实用户问题;产品可以在中后段自然进入,但不得写成功能清单、参数堆叠或硬广 CTA;不展示来源链接,不插图,不编造人名、朋友对话、客户、合作、数据、竞品事实或产品流程;避免第三方测评口吻、纯吐槽、入口之争、系统兜底等分析感或内部感词。",
+  ].join("\n");
+
+const NO_FICTIONAL_PERSON_RULE =
+  "不要写具体人名、英文名或有名有姓的人物剧情;只允许使用一位设计师、某个运营同事、一个团队、某个流程这类匿名角色。";
+
+const TRAFFIC_HOOK_MODES: TrafficHookMode[] = [
+  "mainstream_product",
+  "category_heat",
+  "domestic_alternative",
+  "usage_explainer",
+  "pitfall",
 ];
 
-const NEW_CONCEPT_KEYWORDS = [
-  "服装",
-  "时装",
-  "穿搭",
-  "面料",
-  "款式",
-  "版型",
-  "设计师",
-  "设计",
-  "灵感",
-  "新概念",
+const PRODUCT_CHAIN_RULE = [
+  "每篇都必须完整覆盖产品链路:",
+  "产品是什么",
+  "给谁用",
+  "痛点",
+  "传统做法",
+  "产品介入",
+  "使用后的变化",
+  "不能写什么",
+].join("、");
+
+const FIXED_PRODUCT_ENTRY_PLANS: TopicPlan[] = [
+  {
+    id: "topic-scenario-pain",
+    angleLabel: "场景痛点入口",
+    angleType: "scenario",
+    reason: "先从目标用户正在经历的工作卡点进入,降低理解成本,再完整讲清产品链路。",
+    promptInstruction:
+      "入口固定为场景痛点。先写一个匿名工作场景里的真实卡点,再依次讲清产品是什么、给谁用、痛点、传统做法、产品介入、使用后的变化、不能写什么。不要只写痛点,每一节都要回到产品链路。",
+    sourceNeedLevel: "low",
+  },
+  {
+    id: "topic-traditional-alternative",
+    angleLabel: "传统做法入口",
+    angleType: "product_diff",
+    reason: "从旧流程和替代方案切入,更容易解释为什么需要这个产品,同时避免自由发散。",
+    promptInstruction:
+      "入口固定为传统做法。先写用户过去通常怎么处理这件事,再依次讲清产品是什么、给谁用、痛点、传统做法、产品介入、使用后的变化、不能写什么。只写传统方案和工作方式变化,不得编造竞品事实或客户案例。",
+    sourceNeedLevel: "medium",
+  },
+  {
+    id: "topic-capability-audience",
+    angleLabel: "产品能力/适用人群入口",
+    angleType: "product_intro",
+    reason: "从能力和适用人群切入,用于讲清产品定位、核心功能和适合谁先用。",
+    promptInstruction:
+      "入口固定为产品能力/适用人群。先讲这个产品到底能帮哪类人处理什么任务,再依次讲清产品是什么、给谁用、痛点、传统做法、产品介入、使用后的变化、不能写什么。不要罗列功能,每个功能都要落到角色、动作和边界。",
+    sourceNeedLevel: "low",
+  },
 ];
-
-function normalize(input: string): string {
-  return input.toLowerCase();
-}
-
-function includesAny(text: string, keywords: string[]): boolean {
-  return keywords.some((k) => text.includes(k));
-}
-
-function productText(product: Pick<Product, "name" | "description" | "tags">): string {
-  return normalize([product.name, product.description, ...product.tags].join(" "));
-}
 
 function uniquePlans(plans: TopicPlan[]): TopicPlan[] {
   const seen = new Set<string>();
@@ -60,221 +87,186 @@ function withOptions(
   plans: TopicPlan[],
   options: TopicPlannerOptions = {}
 ): TopicPlan[] {
+  const angleStrategy =
+    options.angleStrategy === "trend" ? "auto" : options.angleStrategy;
   return uniquePlans(plans).map((plan) => ({
     ...plan,
+    promptInstruction: appendInstruction(
+      plan.promptInstruction,
+      NO_FICTIONAL_PERSON_RULE
+    ),
     contentLength: options.contentLength ?? plan.contentLength,
-    angleStrategy: options.angleStrategy ?? plan.angleStrategy,
+    angleStrategy: angleStrategy ?? plan.angleStrategy,
   }));
 }
 
-function buildComparisonPlans(options: TopicPlannerOptions = {}): TopicPlan[] {
-  return withOptions(
+function appendInstruction(instruction: string, rule: string): string {
+  return instruction.includes(rule) ? instruction : `${instruction}\n${rule}`;
+}
+
+function trendContextText(trends: TrendSearchResult[] = []): string {
+  return trends
+    .slice(0, 5)
+    .map((trend, idx) => {
+      const source = trend.source ? ` / ${trend.source}` : "";
+      const date = trend.publishedAt ? ` / ${trend.publishedAt}` : "";
+      return `${idx + 1}. ${trend.title}${source}${date}: ${trend.snippet}`;
+    })
+    .join("\n");
+}
+
+function withTrendRules(
+  instruction: string,
+  trends: TrendSearchResult[] = []
+): string {
+  const context = trendContextText(trends);
+  return [
+    instruction,
+    TREND_RADAR_HARD_RULES,
+    context ? `可参考的热点素材摘要如下,只作内部追溯,正文不得展示链接:\n${context}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function hashText(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function rotateModes(seed: string): TrafficHookMode[] {
+  const offset = hashText(seed) % TRAFFIC_HOOK_MODES.length;
+  return [
+    ...TRAFFIC_HOOK_MODES.slice(offset),
+    ...TRAFFIC_HOOK_MODES.slice(0, offset),
+  ].slice(0, 5);
+}
+
+function inferTrafficContext(
+  product: Pick<Product, "name" | "description" | "tags">,
+  trends: TrendSearchResult[] = []
+): { category: string; anchor?: string } {
+  const text = [product.name, product.description, ...product.tags].join(" ");
+  const trendAnchor = trends.find((trend) => trend.mainstreamAnchor)?.mainstreamAnchor;
+  if (/lovart|canva|midjourney|fashion|apparel|garment|服装|时尚|穿搭|设计|版型|面料|试衣/i.test(text)) {
+    return { category: "AI设计工具", anchor: trendAnchor ?? "Lovart" };
+  }
+  if (/notebook\s*lm|notebooklm|ai\s*笔记|知识库|pdf|文档|资料|会议记录/i.test(text)) {
+    return { category: "AI笔记工具", anchor: trendAnchor ?? "NotebookLM" };
+  }
+  if (/dify|agent|workflow|智能体|工作流|客服|机器人/i.test(text)) {
+    return { category: "AI应用搭建工具", anchor: trendAnchor ?? "Dify" };
+  }
+  if (/excel|表格|bi|数据|报表|分析/i.test(text)) {
+    return { category: "AI数据分析工具", anchor: trendAnchor ?? "Excel" };
+  }
+  if (/飞书|协作|crm|scrm|私域|营销|销售/i.test(text)) {
+    return { category: "AI协作工具", anchor: trendAnchor ?? "飞书" };
+  }
+  return { category: "AI工具", anchor: trendAnchor ?? trends[0]?.mainstreamAnchor };
+}
+
+function labelForTrafficHook(
+  mode: TrafficHookMode,
+  context: { category: string; anchor?: string }
+): string {
+  const anchor = context.anchor;
+  switch (mode) {
+    case "mainstream_product":
+      return anchor ? `${anchor} 是什么,适合谁用` : `${context.category}最近为什么火`;
+    case "category_heat":
+      return `现在大家都在找哪些${context.category}`;
+    case "domestic_alternative":
+      return anchor
+        ? `${anchor} 国内平替怎么选`
+        : `${context.category}国内类似方案怎么选`;
+    case "usage_explainer":
+      return `${context.category}到底能帮谁省事`;
+    case "pitfall":
+      return `试用${context.category}前先看什么`;
+    case "scenario":
+      return `为什么大家开始关注${context.category}`;
+  }
+}
+
+function instructionForTrafficHook(
+  mode: TrafficHookMode,
+  context: { category: string; anchor?: string },
+  productName: string,
+  trendLead: string,
+  trends: TrendSearchResult[] = []
+): string {
+  const label = labelForTrafficHook(mode, context);
+  const anchor = context.anchor ?? context.category;
+  const base =
+    `${trendLead}这篇是产品团队写给用户的完整公众号观察文,围绕“${label}”这个引流切口展开。` +
+    "第一屏必须先写外部热点现象或主流产品噱头;正文按:热点现象或主流产品 -> 它带火了什么需求 -> 用户为什么关心 -> 真实工作问题 -> 产品团队视角 -> 我们的回应 -> 收束判断。";
+
+  const modeInstruction: Record<TrafficHookMode, string> = {
+    mainstream_product: `先用 ${anchor} 是什么、大家为什么搜它做入口,再讲它带火的需求。`,
+    category_heat: `先写 ${context.category} 这个品类为什么被更多人搜索,再讲用户通常在比较什么。`,
+    domestic_alternative: `先写为什么有人会找国内平替或类似方案,允许说国内平替,但不得编造完全替代或官方关系。`,
+    usage_explainer: `先用人话解释这类工具到底能做什么、适合谁,不要写成教程或功能清单。`,
+    pitfall: `先写试用或下单前最容易看错的一点,语气是提醒和避坑,不是抨击或泄愤。`,
+    scenario: `先写某类用户为什么开始关注这类工具,必须是泛化场景,不要虚构具体人物剧情。${NO_FICTIONAL_PERSON_RULE}`,
+  };
+
+  return withTrendRules(
     [
-      {
-        id: "topic-competitor-choice",
-        angleLabel: "为什么选择我们的产品",
-        angleType: "competitor",
-        reason: "产品处在成熟赛道,用户会自然拿它和已有工具比较,需要先回答选型理由。",
-        promptInstruction:
-          "从读者的选型困惑切入:为什么不继续用熟悉的工具。围绕价格、生态、使用门槛、协作方式和数据沉淀解释为什么选择 JOTO 产品。不得编造竞品事实、客户或数据。",
-        sourceNeedLevel: "high",
-      },
-      {
-        id: "topic-pricing-ecosystem",
-        angleLabel: "价格与生态对比",
-        angleType: "pricing",
-        reason: "成熟产品的购买决策常被预算、生态兼容和迁移成本影响。",
-        promptInstruction:
-          "围绕预算、账号体系、生态集成、迁移成本和长期维护展开,讲清 JOTO 产品怎样让组织更容易开始使用。没有明确价格素材时不要编造金额。",
-        sourceNeedLevel: "medium",
-      },
-      {
-        id: "topic-replacement",
-        angleLabel: "从旧工具迁移到新工作流",
-        angleType: "product_diff",
-        reason: "用户已有旧工具时,最关心新产品是否值得替换现有流程。",
-        promptInstruction:
-          "用旧工具流程和新工作流做对照,每节写一个用户动作变化:少切换、少整理、少等待、少返工。",
-        sourceNeedLevel: "medium",
-      },
-      {
-        id: "topic-traditional-alternative",
-        angleLabel: "传统方案到底卡在哪里",
-        angleType: "product_diff",
-        reason: "没有明确竞品素材时,用传统方案对比更安全,也更容易让读者理解差异。",
-        promptInstruction:
-          "只和传统方案做克制对比,写清旧流程里的切换、等待、重复录入和协作断点,再说明 JOTO 产品如何减少这些动作。",
-        sourceNeedLevel: "low",
-      },
-      {
-        id: "topic-easy-story",
-        angleLabel: "一个普通用户为什么会用它",
-        angleType: "education",
-        reason: "成熟赛道也需要把差异讲成普通读者能理解的日常故事。",
-        promptInstruction:
-          "用一个匿名普通用户的日常工作开头,按使用前、第一次使用、用完后的感受写,不要写真实客户案例或虚构指标。",
-        sourceNeedLevel: "low",
-      },
-    ],
-    options
+      base,
+      modeInstruction[mode],
+      "外部话题噱头必须和产品品类、用户场景或相邻功能有关,来源弱时改用品类兜底。",
+      `产品 ${productName} 可以在中后段自然进入,但只能说明它如何回应前文的真实问题,不得写成功能清单。`,
+      "不抨击 AI,不抨击竞品,不嘲讽用户,不写泄愤吐槽。",
+    ].join(" "),
+    trends
   );
 }
 
-function buildEducationPlans(options: TopicPlannerOptions = {}): TopicPlan[] {
-  return withOptions(
-    [
-      {
-        id: "topic-why-need",
-        angleLabel: "为什么需要这个产品",
-        angleType: "education",
-        reason: "产品概念较新,用户未必知道问题存在,需要先做需求教育。",
-        promptInstruction:
-          "不要直接推销功能。先写目标用户在真实工作中的低效、反复和不可控,再解释为什么需要一个新的产品来改变这件事。",
-        sourceNeedLevel: "low",
-      },
-      {
-        id: "topic-scenario-education",
-        angleLabel: "使用场景教育",
-        angleType: "scenario",
-        reason: "新概念产品需要用场景把抽象价值翻译成可感知的工作变化。",
-        promptInstruction:
-          "选择 3 个常见使用场景,每个场景按人物、任务、卡点、产品介入、结果变化来写。场景可以匿名泛化,不得写成真实客户案例。",
-        sourceNeedLevel: "low",
-      },
-      {
-        id: "topic-product-intro",
-        angleLabel: "产品介绍",
-        angleType: "product_intro",
-        reason: "用户建立需求认知后,需要一篇清楚说明产品是什么的基础文章。",
-        promptInstruction:
-          "讲清产品是什么、给谁用、入口在哪里、第一次使用会发生什么,避免术语堆叠。",
-        sourceNeedLevel: "low",
-      },
-      {
-        id: "topic-workflow-before-after",
-        angleLabel: "使用前后对比",
-        angleType: "product_diff",
-        reason: "新产品的价值最容易通过工作流变化被理解。",
-        promptInstruction:
-          "用使用前和使用后的工作流做对照,突出协作、确定性和少返工的变化。没有素材时不得新增具体时间或百分比。",
-        sourceNeedLevel: "medium",
-      },
-      {
-        id: "topic-first-try",
-        angleLabel: "第一次怎么用它",
-        angleType: "education",
-        reason: "低认知产品需要降低上手门槛,让读者知道从哪里开始试。",
-        promptInstruction:
-          "把第一次使用写成 3-5 个自然动作,从一个小任务开始,讲清读者如何把材料、流程或需求交给产品处理。",
-        sourceNeedLevel: "low",
-      },
-    ],
-    options
-  );
+function buildProductEntryPlans(options: TopicPlannerOptions = {}): TopicPlan[] {
+  return withOptions(FIXED_PRODUCT_ENTRY_PLANS, options).map((plan) => ({
+    ...plan,
+    promptInstruction: appendInstruction(plan.promptInstruction, PRODUCT_CHAIN_RULE),
+  }));
 }
 
-function buildScenarioPlans(options: TopicPlannerOptions = {}): TopicPlan[] {
+export function buildFallbackTrendTopicPlans(
+  product: Pick<Product, "name" | "description" | "tags">,
+  trends: TrendSearchResult[] = [],
+  options: TopicPlannerOptions = {}
+): TopicPlan[] {
+  const trendLead = trends[0]?.title
+    ? `优先参考热点「${trends[0].title}」,但正文不要展示来源链接。`
+    : "没有可用热点时,写成近期行业观察,不要假装引用新闻。";
+  const context = inferTrafficContext(product, trends);
+  const modes = rotateModes(`${product.name}:${trends[0]?.title ?? ""}`);
   return withOptions(
-    [
-      {
-        id: "topic-office-moment",
-        angleLabel: "一个办公室里的真实卡点",
-        angleType: "scenario",
-        reason: "场景痛点适合用轻松故事开篇,让 IT、运营和白领读者更容易读下去。",
-        promptInstruction:
-          "从一个办公室里的具体工作瞬间写起,用角色、任务和卡点带出产品。少讲概念,多写用户动作和工作变化。",
-        sourceNeedLevel: "low",
-      },
-      {
-        id: "topic-small-task-start",
-        angleLabel: "从一个小任务开始试用",
-        angleType: "education",
-        reason: "轻量内容需要降低阅读和试用门槛,不要一上来讲体系。",
-        promptInstruction:
-          "围绕一个小任务展开,写清传统做法的麻烦、产品介入方式和读者可以马上尝试的一步。",
-        sourceNeedLevel: "low",
-      },
-      {
-        id: "topic-before-coffee",
-        angleLabel: "这件事本来不该耗一上午",
-        angleType: "scenario",
-        reason: "水文短稿更适合抓住一个日常抱怨,再自然引出产品。",
-        promptInstruction:
-          "用轻松但克制的公众号语气写一个日常卡顿,重点写少切换、少追问、少整理,不要编造效率数字。",
-        sourceNeedLevel: "low",
-      },
-      {
-        id: "topic-team-handoff",
-        angleLabel: "团队交接为什么总丢信息",
-        angleType: "product_diff",
-        reason: "交接、协作和版本断点是多数工具类产品都能承接的通用场景。",
-        promptInstruction:
-          "从团队交接和信息断点切入,写清产品如何让上下文更集中、责任更清楚、后续动作更顺。",
-        sourceNeedLevel: "medium",
-      },
-      {
-        id: "topic-friendly-intro",
-        angleLabel: "给同事解释这个产品",
-        angleType: "product_intro",
-        reason: "场景偏好也需要一篇像对同事解释一样的基础介绍稿。",
-        promptInstruction:
-          "像给同事解释一个新工具一样写:它是什么、适合哪个任务、第一次怎么试、适合谁先用。",
-        sourceNeedLevel: "low",
-      },
-    ],
-    options
-  );
-}
-
-function buildTrendPlans(options: TopicPlannerOptions = {}): TopicPlan[] {
-  return withOptions(
-    [
-      {
-        id: "topic-trend-material",
-        angleLabel: "热点背后的工作方式变化",
+    modes.map((mode, index): TopicPlan => {
+      const label = labelForTrafficHook(mode, context);
+      return {
+        id: `traffic-hook-${mode}-${index + 1}`,
+        angleLabel: label,
         angleType: "trend",
-        reason: "热点素材适合先讲行业事件背后的矛盾,再接到产品观点。",
-        promptInstruction:
-          "只有素材包提供热点信息时才复述事件;否则写成趋势观察。先讲行业变化,再解释产品如何回应这种变化。",
-        sourceNeedLevel: "high",
-      },
-      {
-        id: "topic-trend-vs-reality",
-        angleLabel: "热闹概念和真实落地之间",
-        angleType: "trend",
-        reason: "热点文章需要避免跟风,更适合把概念拉回真实工作场景。",
-        promptInstruction:
-          "对比热闹概念与一线工作里的真实卡点,讲清产品能解决哪一小段具体流程,不得编造新闻事实。",
-        sourceNeedLevel: "high",
-      },
-      {
-        id: "topic-why-now",
-        angleLabel: "为什么现在值得关注",
-        angleType: "education",
-        reason: "趋势切入后仍要回答读者为什么现在应该了解这个产品。",
-        promptInstruction:
-          "从工作方式变化切入,解释为什么这个产品不是噱头,而是某类重复工作变得可以被重新组织。",
-        sourceNeedLevel: "medium",
-      },
-      {
-        id: "topic-old-new-workflow",
-        angleLabel: "旧流程正在被改写",
-        angleType: "product_diff",
-        reason: "趋势观点需要落到旧流程和新流程的具体差异。",
-        promptInstruction:
-          "写旧流程与新流程的对照,每段只讲一个动作变化,不要写泛泛的宏大判断。",
-        sourceNeedLevel: "medium",
-      },
-      {
-        id: "topic-safe-choice",
-        angleLabel: "怎么判断它适不适合你",
-        angleType: "competitor",
-        reason: "趋势内容最后需要回到选择标准,帮助用户克制判断。",
-        promptInstruction:
-          "写一组安全的选择标准:适合什么任务、不适合什么任务、需要补哪些素材才能判断。不得写绝对化承诺。",
-        sourceNeedLevel: "low",
-      },
-    ],
+        reason: "这是热点引流切口,用于承接外部搜索、品类热度或平替需求,不是产品角度判断。",
+        promptInstruction: instructionForTrafficHook(
+          mode,
+          context,
+          product.name,
+          trendLead,
+          trends
+        ),
+        sourceNeedLevel: mode === "mainstream_product" ? "medium" : "low",
+        trafficHookLabel: label,
+        trafficHookMode: mode,
+        mainstreamAnchor:
+          mode === "mainstream_product" || mode === "domestic_alternative"
+            ? context.anchor
+            : undefined,
+      };
+    }),
     options
   );
 }
@@ -283,71 +275,10 @@ export function buildFallbackTopicPlans(
   product: Pick<Product, "name" | "description" | "tags">,
   options: TopicPlannerOptions = {}
 ): TopicPlan[] {
-  const strategy = options.angleStrategy ?? "auto";
-  if (strategy === "comparison") return buildComparisonPlans(options);
-  if (strategy === "education") return buildEducationPlans(options);
-  if (strategy === "scenario") return buildScenarioPlans(options);
-  if (strategy === "trend") return buildTrendPlans(options);
-
-  const text = productText(product);
-  const isMature = includesAny(text, MATURE_MARKET_KEYWORDS);
-  const isNewConcept = includesAny(text, NEW_CONCEPT_KEYWORDS) && !isMature;
-
-  if (isMature) {
-    return buildComparisonPlans(options);
-  }
-
-  if (isNewConcept) {
-    return buildEducationPlans(options);
-  }
-
-  return withOptions([
-    {
-      id: "topic-product-intro",
-      angleLabel: "产品介绍",
-      angleType: "product_intro",
-      reason: "需要先讲清产品是什么、解决谁的问题、怎么用。",
-      promptInstruction:
-        "从目标用户的一天开场,讲清产品定位、核心能力、典型使用动作和为什么值得试。不要编造客户和量化结果。",
-      sourceNeedLevel: "low",
-    },
-    {
-      id: "topic-product-diff",
-      angleLabel: "为什么选我们",
-      angleType: "product_diff",
-      reason: "产品需要和传统做法建立清晰差异,避免只写功能说明。",
-      promptInstruction:
-        "围绕旧流程与新流程的变化展开,回答为什么选这个产品而不是继续沿用传统做法。只写流程差异和体验变化,不编造效果数据。",
-      sourceNeedLevel: "medium",
-    },
-    {
-      id: "topic-why-need",
-      angleLabel: "为什么要用这个产品",
-      angleType: "education",
-      reason: "低认知或泛用产品需要先让用户意识到这个问题值得解决。",
-      promptInstruction:
-        "开头放一个日常工作钩子,中间解密这个产品解决的真实卡点,结尾写读者可以从哪个小任务开始试用。",
-      sourceNeedLevel: "low",
-    },
-    {
-      id: "topic-competitor",
-      angleLabel: "传统方案对比",
-      angleType: "competitor",
-      reason: "即使没有明确竞品,也可以和传统方案比较,讲清变化。",
-      promptInstruction:
-        "只和传统方案做克制对比,不编造具体竞品事实,重点写流程差异和适用场景。",
-      sourceNeedLevel: "high",
-    },
-    {
-      id: "topic-trend",
-      angleLabel: "趋势观察",
-      angleType: "trend",
-      reason: "趋势视角能帮助用户理解产品为什么现在值得关注。",
-      promptInstruction:
-        "从行业变化和组织效率切入,把产品放进更大的工作方式变化里讨论。",
-      sourceNeedLevel: "medium",
-    },
-  ], options);
+  void product;
+  const strategy =
+    options.angleStrategy === "trend" ? "auto" : options.angleStrategy ?? "auto";
+  return buildProductEntryPlans({ ...options, angleStrategy: strategy });
 }
 
 export function coerceTopicPlans(
@@ -358,30 +289,53 @@ export function coerceTopicPlans(
   const fallback = buildFallbackTopicPlans(product, options);
   if (!Array.isArray(input)) return fallback;
 
+  return fallback.map((plan, idx) => {
+    const row = input[idx] && typeof input[idx] === "object"
+      ? (input[idx] as Record<string, unknown>)
+      : {};
+    return {
+      ...plan,
+      reason:
+        typeof row.reason === "string" && row.reason.trim()
+          ? row.reason.trim()
+          : plan.reason,
+    };
+  });
+}
+
+export function coerceTrendTopicPlans(
+  input: unknown,
+  product: Pick<Product, "name" | "description" | "tags">,
+  trends: TrendSearchResult[] = [],
+  options: TopicPlannerOptions = {}
+): TopicPlan[] {
+  const fallback = buildFallbackTrendTopicPlans(product, trends, options);
+  if (!Array.isArray(input)) return fallback;
+
   const parsed = uniquePlans(
     input.map((item, idx): TopicPlan => {
       const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+      const rawInstruction =
+        typeof row.promptInstruction === "string" && row.promptInstruction.trim()
+          ? row.promptInstruction.trim()
+          : fallback[idx]?.promptInstruction ?? fallback[0].promptInstruction;
       return {
         id:
           typeof row.id === "string" && row.id.trim()
             ? row.id.trim()
-            : `topic-ai-${idx + 1}`,
+            : `trend-ai-${idx + 1}`,
         angleLabel:
           typeof row.angleLabel === "string" && row.angleLabel.trim()
             ? row.angleLabel.trim()
-            : fallback[idx]?.angleLabel ?? `选题 ${idx + 1}`,
-        angleType:
-          typeof row.angleType === "string"
-            ? (row.angleType as TopicPlan["angleType"])
-            : fallback[idx]?.angleType ?? "product_intro",
+            : fallback[idx]?.angleLabel ?? `热点选题 ${idx + 1}`,
+        angleType: "trend",
         reason:
           typeof row.reason === "string" && row.reason.trim()
             ? row.reason.trim()
-            : fallback[idx]?.reason ?? "根据产品资料选择。",
-        promptInstruction:
-          typeof row.promptInstruction === "string" && row.promptInstruction.trim()
-            ? row.promptInstruction.trim()
-            : fallback[idx]?.promptInstruction ?? fallback[0].promptInstruction,
+            : fallback[idx]?.reason ?? "根据产品资料和热点素材选择。",
+        promptInstruction: rawInstruction.includes(TREND_RADAR_HARD_RULES)
+          ? rawInstruction
+          : withTrendRules(rawInstruction, trends),
         sourceNeedLevel:
           row.sourceNeedLevel === "high" ||
           row.sourceNeedLevel === "medium" ||
@@ -389,13 +343,24 @@ export function coerceTopicPlans(
             ? row.sourceNeedLevel
             : fallback[idx]?.sourceNeedLevel ?? "medium",
         contentLength: options.contentLength,
-        angleStrategy: options.angleStrategy,
+        angleStrategy: undefined,
+        trafficHookLabel:
+          typeof row.trafficHookLabel === "string" && row.trafficHookLabel.trim()
+            ? row.trafficHookLabel.trim()
+            : fallback[idx]?.trafficHookLabel ?? fallback[idx]?.angleLabel,
+        trafficHookMode:
+          typeof row.trafficHookMode === "string"
+            ? (row.trafficHookMode as TrafficHookMode)
+            : fallback[idx]?.trafficHookMode,
+        mainstreamAnchor:
+          typeof row.mainstreamAnchor === "string" && row.mainstreamAnchor.trim()
+            ? row.mainstreamAnchor.trim()
+            : fallback[idx]?.mainstreamAnchor,
       };
     })
   );
 
   if (parsed.length >= 5) return parsed.slice(0, 5);
-
   const merged = uniquePlans([...parsed, ...fallback]);
   return merged.length >= 5 ? merged.slice(0, 5) : fallback;
 }

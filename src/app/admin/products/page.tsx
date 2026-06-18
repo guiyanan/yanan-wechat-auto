@@ -16,14 +16,11 @@ import {
   ClipboardPaste,
   FileUp,
   Globe2,
-  ImageIcon,
   Loader2,
   PackagePlus,
   Save,
   Sparkles,
   Trash2,
-  Video,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TopNav } from "@/components/nav/TopNav";
@@ -33,15 +30,22 @@ import {
   mergeProducts,
   productSourceToArticleContext,
 } from "@/lib/productCatalog";
-import { extractPdfTextSnippet } from "@/lib/pdfExtract";
-import { PRODUCT_IMAGE_KIND_OPTIONS } from "@/lib/productImages";
+import { cleanPdfTextSnippet, extractPdfTextSnippet } from "@/lib/pdfExtract";
+import { removeProductDocument } from "@/lib/productDocuments";
+import {
+  entriesToText,
+  evidenceToText,
+  normalizeOptionalProductUnderstanding,
+  stringsToText,
+  textToEntries,
+  textToEvidence,
+  textToStrings,
+} from "@/lib/productUnderstandingForm";
 import { useProductStore } from "@/store/productStore";
 import { useWizardStore } from "@/store/wizardStore";
 import type {
   Product,
   ProductDocument,
-  ProductImageAsset,
-  ProductImageKind,
   ProductSourceMediaAsset,
   ProductUnderstanding,
 } from "@/types";
@@ -49,7 +53,6 @@ import { cn } from "@/lib/utils";
 
 const DEFAULT_GRADIENT: Product["iconGradient"] = ["#1268FF", "#5B8CFF"];
 const MAX_EVIDENCE_IMAGE_BYTES = 50 * 1024 * 1024;
-const MAX_EVIDENCE_VIDEO_BYTES = 500 * 1024 * 1024;
 
 function newProduct(): Product {
   const id = `prod-local-${Date.now().toString(36)}`;
@@ -64,9 +67,6 @@ function newProduct(): Product {
     sourceMediaAssets: [],
     sourcePack: {
       productNotes: "",
-      competitorNotes: "",
-      trendNotes: "",
-      imageRefs: "",
       websiteNotes: "",
       pdfNotes: "",
       mediaNotes: "",
@@ -88,15 +88,26 @@ function copyProduct(product: Product): Product {
       ...asset,
     })),
     sourcePack: { ...product.sourcePack },
-    understanding: product.understanding
-      ? {
-          ...product.understanding,
-          targetUsers: [...product.understanding.targetUsers],
-          coreCapabilities: [...product.understanding.coreCapabilities],
-          contentAngles: [...product.understanding.contentAngles],
-          missingInfo: [...product.understanding.missingInfo],
-        }
-      : undefined,
+    understanding: normalizeOptionalProductUnderstanding(product.understanding),
+  };
+}
+
+function makeManualUnderstanding(
+  definition: string,
+  current?: ProductUnderstanding
+): ProductUnderstanding {
+  return {
+    definition,
+    coreFunctions: current?.coreFunctions ?? [],
+    targetCustomers: current?.targetCustomers ?? [],
+    painPoints: current?.painPoints ?? [],
+    traditionalAlternatives: current?.traditionalAlternatives ?? [],
+    afterUseChanges: current?.afterUseChanges ?? [],
+    evidence: current?.evidence ?? [],
+    writingBoundaries: current?.writingBoundaries ?? [],
+    questionsToAsk: current?.questionsToAsk ?? [],
+    generatedAt: current?.generatedAt ?? new Date().toISOString(),
+    source: current?.source ?? "manual",
   };
 }
 
@@ -109,14 +120,50 @@ function appendMediaNote(
   asset: ProductSourceMediaAsset
 ): string {
   const note = [
-    `${asset.fileType === "video" ? "视频" : "截图"}素材：${
-      asset.caption || asset.fileName
-    }`,
+    `截图素材：${asset.caption || asset.fileName}`,
     asset.analysis ? `系统理解：${asset.analysis}` : "",
   ]
     .filter(Boolean)
     .join("\n");
   return [current?.trim(), note].filter(Boolean).join("\n\n");
+}
+
+function understandingMediaAssets(product: Product): ProductSourceMediaAsset[] {
+  return (product.sourceMediaAssets ?? []).filter(
+    (asset) => asset.fileType === "image"
+  );
+}
+
+function productUnderstandingErrorMessage(err: unknown): string {
+  if (
+    err instanceof TypeError &&
+    /failed to fetch|load failed|networkerror/i.test(err.message)
+  ) {
+    return "本地小信服务连接失败。请确认开发服务还在运行,然后刷新页面重试。";
+  }
+  return err instanceof Error ? err.message : "生成失败";
+}
+
+function documentParseStatus(doc: ProductDocument): {
+  label: string;
+  className: string;
+} {
+  if (doc.extractedText?.trim()) {
+    return {
+      label: "已读取文本",
+      className: "bg-emerald-50 text-emerald-700",
+    };
+  }
+  if (doc.ragStatus === "failed") {
+    return {
+      label: "未读取到文本",
+      className: "bg-red-50 text-red-700",
+    };
+  }
+  return {
+    label: "未读取到文本",
+    className: "bg-amber-50 text-amber-700",
+  };
 }
 
 function formatFileSize(bytes: number): string {
@@ -136,7 +183,7 @@ function understandingFingerprint(product: Product): string {
     productNotes: product.sourcePack?.productNotes,
     pdfNotes: product.sourcePack?.pdfNotes,
     mediaNotes: product.sourcePack?.mediaNotes,
-    sourceMediaAssets: product.sourceMediaAssets?.map((asset) => [
+    sourceMediaAssets: understandingMediaAssets(product).map((asset) => [
       asset.fileName,
       asset.caption,
       asset.analysis,
@@ -164,15 +211,14 @@ export default function ProductLibraryPage() {
   const [draft, setDraft] = useState<Product | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [understandingStatus, setUnderstandingStatus] = useState<{
+    type: "info" | "success" | "error";
+    message: string;
+  } | null>(null);
   const [parsingWebsite, setParsingWebsite] = useState(false);
   const [readingPdf, setReadingPdf] = useState(false);
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [analyzingEvidence, setAnalyzingEvidence] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [previewAsset, setPreviewAsset] = useState<ProductImageAsset | null>(
-    null
-  );
-  const lastParsedWebsiteRef = useRef<string>("");
   const lastAutoUnderstandingRef = useRef<string>("");
 
   useEffect(() => {
@@ -184,10 +230,8 @@ export default function ProductLibraryPage() {
     setSelectedId(selected.id);
     setDraft(copyProduct(selected));
     setTagInput(tagString(selected));
-    lastParsedWebsiteRef.current = selected.sourcePack?.websiteNotes
-      ? selected.website ?? ""
-      : "";
-    lastAutoUnderstandingRef.current = selected.understanding?.summary
+    setUnderstandingStatus(null);
+    lastAutoUnderstandingRef.current = selected.understanding?.definition
       ? understandingFingerprint(selected)
       : "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,6 +239,23 @@ export default function ProductLibraryPage() {
 
   function patchDraft(patch: Partial<Product>) {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
+  }
+
+  function patchUnderstanding(patch: Partial<ProductUnderstanding>) {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const current =
+        prev.understanding ?? makeManualUnderstanding("", undefined);
+      return {
+        ...prev,
+        understanding: {
+          ...current,
+          ...patch,
+          generatedAt: current.generatedAt,
+          source: current.source === "manual" ? "manual" : "manual",
+        },
+      };
+    });
   }
 
   function patchSource(sourcePatch: NonNullable<Product["sourcePack"]>) {
@@ -211,14 +272,25 @@ export default function ProductLibraryPage() {
     );
   }
 
-  const applyUnderstanding = useCallback((understanding: ProductUnderstanding) => {
-    setDraft((prev) => (prev ? { ...prev, understanding } : prev));
-  }, []);
+  const applyUnderstanding = useCallback(
+    (productId: string, understanding: ProductUnderstanding) => {
+      setDraft((prev) =>
+        prev?.id === productId ? { ...prev, understanding } : prev
+      );
+    },
+    []
+  );
 
   const generateUnderstandingFor = useCallback(
     async (product: Product, options: { silent?: boolean } = {}) => {
       if (!product.name.trim()) {
-        if (!options.silent) toast.error("请先填写产品名称");
+        if (!options.silent) {
+          setUnderstandingStatus({
+            type: "error",
+            message: "请先填写产品名称。",
+          });
+          toast.error("请先填写产品名称");
+        }
         return;
       }
       const fingerprint = understandingFingerprint(product);
@@ -227,12 +299,22 @@ export default function ProductLibraryPage() {
       }
       lastAutoUnderstandingRef.current = fingerprint;
       setGenerating(true);
+      if (!options.silent) {
+        setUnderstandingStatus({
+          type: "info",
+          message: "正在基于产品资料生成理解卡,这一步可能需要几十秒。",
+        });
+      }
       try {
         const pdfText = product.knowledgeDocs
           .map((doc) => doc.extractedText)
           .filter(Boolean)
           .join("\n\n")
-          .slice(0, 6000);
+          .split(/\n{2,}/)
+          .map((text) => cleanPdfTextSnippet(text))
+          .filter(Boolean)
+          .join("\n\n")
+          .slice(0, 12_000);
         const res = await fetch("/api/products/understand", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -251,15 +333,26 @@ export default function ProductLibraryPage() {
         if (!res.ok || !data.understanding) {
           throw new Error(data.reason ?? `HTTP ${res.status}`);
         }
-        applyUnderstanding(data.understanding);
+        applyUnderstanding(product.id, data.understanding);
+        setUnderstandingStatus({
+          type: "success",
+          message: "产品理解卡已生成。请检查并手动保存产品库。",
+        });
         toast.success(
           options.silent
-            ? "资料解析完成,产品理解简介已自动生成"
+            ? "产品理解卡已生成"
             : "产品理解简介已重新生成"
         );
       } catch (err) {
+        const message = productUnderstandingErrorMessage(err);
         if (!options.silent) {
-          toast.error(err instanceof Error ? err.message : "生成失败");
+          setUnderstandingStatus({
+            type: "error",
+            message,
+          });
+        }
+        if (!options.silent) {
+          toast.error(message);
         }
       } finally {
         setGenerating(false);
@@ -268,61 +361,89 @@ export default function ProductLibraryPage() {
     [applyUnderstanding]
   );
 
-  const parseWebsiteFor = useCallback(
-    async (product: Product) => {
-      const website = product.website?.trim();
-      if (!website) return;
-      if (!/^https?:\/\//i.test(website) && !website.includes(".")) return;
-      if (lastParsedWebsiteRef.current === website) return;
-      lastParsedWebsiteRef.current = website;
+  async function parseWebsiteFor(product: Product) {
+    const website = product.website?.trim();
+    if (!website) return;
+    if (!/^https?:\/\//i.test(website) && !website.includes(".")) return;
 
-      setParsingWebsite(true);
-      try {
-        const res = await fetch("/api/products/parse-website", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: website }),
-        });
-        const data = (await res.json()) as {
-          notes?: string;
-          title?: string;
-          description?: string;
-          error?: string;
-        };
-        if (!res.ok || !data.notes) {
-          throw new Error(data.error ?? `HTTP ${res.status}`);
-        }
-        const nextProduct: Product = {
-          ...product,
-          description: product.description.trim()
-            ? product.description
-            : data.description || product.description,
-          sourcePack: {
-            ...product.sourcePack,
-            websiteNotes: data.notes,
-          },
-        };
-        setDraft(nextProduct);
-        await generateUnderstandingFor(nextProduct, { silent: true });
-      } catch (err) {
-        patchSource({
-          websiteNotes: `官网链接：${website}\n官网暂时无法自动解析。请手动补充官网定位、核心页面、产品模块、客户角色和文章要强调的卖点。`,
-        });
-        toast.error(err instanceof Error ? err.message : "官网解析失败");
-      } finally {
-        setParsingWebsite(false);
+    setParsingWebsite(true);
+    try {
+      const res = await fetch("/api/products/parse-website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: website }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        notes?: string;
+        title?: string;
+        description?: string;
+        error?: string;
+        quality?: "rich" | "metadata" | "shallow";
+        readableTextLength?: number;
+        productSignalCount?: number;
+      };
+      if (!res.ok || !data.ok || !data.notes) {
+        const notes =
+          data.notes ??
+          `官网链接：${website}\n官网暂时无法自动解析。请手动补充官网定位、核心页面、产品模块、客户角色和文章要强调的卖点。`;
+        setDraft((prev) =>
+          prev?.id === product.id
+            ? {
+                ...prev,
+                sourcePack: {
+                  ...prev.sourcePack,
+                  websiteNotes: notes,
+                },
+              }
+            : prev
+        );
+        toast.error(
+          data.quality === "shallow"
+            ? "官网只解析到少量正文,请手动补充关键产品信息"
+            : data.error ?? `HTTP ${res.status}`
+        );
+        return;
       }
-    },
-    [generateUnderstandingFor]
-  );
-
-  useEffect(() => {
-    if (!draft?.website?.trim()) return;
-    const timer = window.setTimeout(() => {
-      void parseWebsiteFor(draft);
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [draft, draft?.website, parseWebsiteFor]);
+      setDraft((prev) =>
+        prev?.id === product.id
+          ? {
+              ...prev,
+              description: prev.description.trim()
+                ? prev.description
+                : data.description || prev.description,
+              sourcePack: {
+                ...prev.sourcePack,
+                websiteNotes: data.notes,
+              },
+            }
+          : prev
+      );
+      const depth =
+        typeof data.readableTextLength === "number" &&
+        typeof data.productSignalCount === "number"
+          ? data.quality === "metadata"
+            ? `metadata 素材 ${data.readableTextLength} 字,${data.productSignalCount} 个产品线索`
+            : `${data.readableTextLength} 字正文,${data.productSignalCount} 个产品线索`
+          : "可手动生成产品理解卡";
+      toast.success(`官网资料已解析: ${depth}`);
+    } catch (err) {
+      setDraft((prev) =>
+        prev?.id === product.id
+          ? {
+              ...prev,
+              sourcePack: {
+                ...prev.sourcePack,
+                websiteNotes: `官网链接：${website}\n官网暂时无法自动解析。请手动补充官网定位、核心页面、产品模块、客户角色和文章要强调的卖点。`,
+              },
+            }
+          : prev
+      );
+      toast.error(err instanceof Error ? err.message : "官网解析失败");
+    } finally {
+      setParsingWebsite(false);
+    }
+  }
 
   async function handlePdfUpload(file: File | null) {
     if (!file || !draft) return;
@@ -355,9 +476,8 @@ export default function ProductLibraryPage() {
       };
       setDraft(nextProduct);
       toast.success(
-        extractedText ? "PDF 片段已读取,正在生成产品理解" : "PDF 已记录,请手动补充重点"
+        extractedText ? "PDF 片段已读取,可手动生成产品理解卡" : "PDF 已记录,请手动补充重点"
       );
-      await generateUnderstandingFor(nextProduct, { silent: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "PDF 读取失败");
     } finally {
@@ -365,18 +485,19 @@ export default function ProductLibraryPage() {
     }
   }
 
+  function handleRemoveDocument(docId: string) {
+    setDraft((prev) => (prev ? removeProductDocument(prev, docId) : prev));
+    toast.success("PDF 已删除,记得保存产品库");
+  }
+
   function validateEvidenceFile(file: File): string | null {
     if (
-      !/^(?:image\/(?:png|jpe?g|webp)|video\/(?:mp4|webm|quicktime))$/i.test(
-        file.type
-      )
+      !/^image\/(?:png|jpe?g|webp)$/i.test(file.type)
     ) {
-      return "只支持 PNG、JPG、JPEG、WebP、MP4、WebM、MOV";
+      return "只支持 PNG、JPG、JPEG、WebP 截图";
     }
-    const isVideo = file.type.startsWith("video/");
-    const maxBytes = isVideo ? MAX_EVIDENCE_VIDEO_BYTES : MAX_EVIDENCE_IMAGE_BYTES;
-    if (file.size > maxBytes) {
-      return `${isVideo ? "演示视频" : "网页截图"}不能超过 ${formatFileSize(maxBytes)}`;
+    if (file.size > MAX_EVIDENCE_IMAGE_BYTES) {
+      return `网页截图不能超过 ${formatFileSize(MAX_EVIDENCE_IMAGE_BYTES)}`;
     }
     return null;
   }
@@ -468,20 +589,15 @@ export default function ProductLibraryPage() {
       }
       toast.success(
         validFiles.length === 1
-          ? "素材已加入产品理解"
-          : `${validFiles.length} 个素材已加入产品理解`
+          ? "素材已加入产品资料,可手动生成产品理解卡"
+          : `${validFiles.length} 个素材已加入产品资料,可手动生成产品理解卡`
       );
-      await generateUnderstandingFor(nextProduct, { silent: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "素材上传失败");
     } finally {
       setUploadingEvidence(false);
       setAnalyzingEvidence(false);
     }
-  }
-
-  async function handleEvidenceUpload(file: File | null) {
-    await handleEvidenceFiles(file ? [file] : []);
   }
 
   function handleEvidencePaste(e: ClipboardEvent<HTMLDivElement>) {
@@ -521,70 +637,6 @@ export default function ProductLibraryPage() {
       return;
     }
     void handleEvidenceFiles(pastedFiles);
-  }
-
-  async function handleImageUpload(file: File | null) {
-    if (!file || !draft) return;
-    if (!/^image\/(?:png|jpe?g|webp)$/i.test(file.type)) {
-      toast.error("只支持 PNG、JPG、JPEG、WebP 图片");
-      return;
-    }
-
-    setUploadingImage(true);
-    try {
-      const formData = new FormData();
-      formData.set("productId", draft.id);
-      formData.set("file", file);
-      const res = await fetch("/api/products/assets/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = (await res.json()) as {
-        asset?: ProductImageAsset;
-        error?: string;
-      };
-      if (!res.ok || !data.asset) {
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
-      patchDraft({
-        imageAssets: [...(draft.imageAssets ?? []), data.asset],
-      });
-      toast.success("图片已加入当前产品素材库");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "图片上传失败");
-    } finally {
-      setUploadingImage(false);
-    }
-  }
-
-  function patchImageAsset(
-    assetId: string,
-    patch: Partial<ProductImageAsset>
-  ) {
-    setDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            imageAssets: (prev.imageAssets ?? []).map((asset) =>
-              asset.id === assetId ? { ...asset, ...patch } : asset
-            ),
-          }
-        : prev
-    );
-  }
-
-  function removeImageAsset(assetId: string) {
-    setDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            imageAssets: (prev.imageAssets ?? []).filter(
-              (asset) => asset.id !== assetId
-            ),
-          }
-        : prev
-    );
-    setPreviewAsset((prev) => (prev?.id === assetId ? null : prev));
   }
 
   function patchSourceMediaAsset(
@@ -633,7 +685,7 @@ export default function ProductLibraryPage() {
         .filter(Boolean),
       sourcePack: draft.sourcePack ?? {},
       imageAssets: draft.imageAssets ?? [],
-      sourceMediaAssets: draft.sourceMediaAssets ?? [],
+      sourceMediaAssets: understandingMediaAssets(draft),
     };
     upsertProduct(normalized);
     setSelectedId(normalized.id);
@@ -666,7 +718,6 @@ export default function ProductLibraryPage() {
                 setSelectedId(product.id);
                 setDraft(product);
                 setTagInput("");
-                lastParsedWebsiteRef.current = "";
                 lastAutoUnderstandingRef.current = "";
               }}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-800"
@@ -688,10 +739,7 @@ export default function ProductLibraryPage() {
                       setSelectedId(product.id);
                       setDraft(copyProduct(product));
                       setTagInput(tagString(product));
-                      lastParsedWebsiteRef.current = product.sourcePack?.websiteNotes
-                        ? product.website ?? ""
-                        : "";
-                      lastAutoUnderstandingRef.current = product.understanding?.summary
+                      lastAutoUnderstandingRef.current = product.understanding?.definition
                         ? understandingFingerprint(product)
                         : "";
                     }}
@@ -730,10 +778,7 @@ export default function ProductLibraryPage() {
                             {ready ? "资料已补充" : "待完善资料"}
                           </span>
                           <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                            {(product.imageAssets ?? []).length} 张图片素材
-                          </span>
-                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                            {(product.sourceMediaAssets ?? []).length} 个理解素材
+                            {understandingMediaAssets(product).length} 个理解素材
                           </span>
                         </div>
                       </div>
@@ -822,26 +867,46 @@ export default function ProductLibraryPage() {
                       产品资料输入
                     </h2>
                     <p className="mt-1 text-xs text-slate-500">
-                      官网链接、PDF、网页截图和演示视频会一起参与产品理解。
+                      官网链接、PDF 和网页截图会一起参与产品理解。解析和生成都需要手动触发。
                     </p>
                   </div>
-                  <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                    {readingPdf ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <FileUp className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    上传产品 PDF
-                    <input
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        void handlePdfUpload(e.target.files?.[0] ?? null);
-                        e.currentTarget.value = "";
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (draft) void parseWebsiteFor(draft);
                       }}
-                    />
-                  </label>
+                      disabled={parsingWebsite || !draft.website?.trim()}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:border-blue-200 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {parsingWebsite ? (
+                        <Loader2
+                          className="h-4 w-4 animate-spin"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Globe2 className="h-4 w-4" aria-hidden="true" />
+                      )}
+                      解析官网
+                    </button>
+                    <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-medium text-blue-700 hover:bg-blue-100">
+                      {readingPdf ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <FileUp className="h-4 w-4" aria-hidden="true" />
+                      )}
+                      上传产品 PDF
+                      <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          void handlePdfUpload(e.target.files?.[0] ?? null);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 {draft.knowledgeDocs.length > 0 && (
@@ -849,12 +914,37 @@ export default function ProductLibraryPage() {
                     {draft.knowledgeDocs.map((doc) => (
                       <li
                         key={doc.id}
-                        className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"
                       >
-                        <span className="font-medium text-slate-900">
-                          {doc.fileName}
+                        <span className="min-w-0">
+                          <span className="font-medium text-slate-900">
+                            {doc.fileName}
+                          </span>
+                          <span className="ml-2 text-slate-400">
+                            {doc.sizeKb} KB
+                          </span>
+                          {(() => {
+                            const status = documentParseStatus(doc);
+                            return (
+                              <span
+                                className={cn(
+                                  "ml-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                  status.className
+                                )}
+                              >
+                                {status.label}
+                              </span>
+                            );
+                          })()}
                         </span>
-                        <span className="ml-2 text-slate-400">{doc.sizeKb} KB</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDocument(doc.id)}
+                          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                          aria-label={`删除 ${doc.fileName}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -864,10 +954,10 @@ export default function ProductLibraryPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <h3 className="text-xs font-semibold text-slate-800">
-                        网页截图 / 智能体演示视频
+                        网页截图 / 智能体页面
                       </h3>
                       <p className="mt-1 text-xs leading-5 text-slate-500">
-                        适合没有稳定登录页、只有智能体或演示流程的产品。截图可批量上传或直接批量粘贴,视频最高支持 500MB。
+                        适合没有稳定登录页、只有智能体页面或演示流程截图的产品。截图可批量上传或直接批量粘贴。
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -890,26 +980,6 @@ export default function ProductLibraryPage() {
                             void handleEvidenceFiles(
                               Array.from(e.target.files ?? [])
                             );
-                            e.currentTarget.value = "";
-                          }}
-                        />
-                      </label>
-                      <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:border-blue-200 hover:text-blue-700">
-                        {uploadingEvidence || analyzingEvidence ? (
-                          <Loader2
-                            className="h-4 w-4 animate-spin"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <Video className="h-4 w-4" aria-hidden="true" />
-                        )}
-                        上传演示视频
-                        <input
-                          type="file"
-                          accept="video/mp4,video/webm,video/quicktime"
-                          className="hidden"
-                          onChange={(e) => {
-                            void handleEvidenceUpload(e.target.files?.[0] ?? null);
                             e.currentTarget.value = "";
                           }}
                         />
@@ -949,44 +1019,36 @@ export default function ProductLibraryPage() {
                     </div>
                   </div>
 
-                  {(draft.sourceMediaAssets ?? []).length === 0 ? (
+                  {understandingMediaAssets(draft).length === 0 ? (
                     <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center">
                       <Camera
                         className="mx-auto h-7 w-7 text-slate-300"
                         aria-hidden="true"
                       />
                       <p className="mt-2 text-xs font-medium text-slate-600">
-                        还没有截图或视频理解素材
+                        还没有截图理解素材
                       </p>
                       <p className="mt-1 text-xs leading-5 text-slate-400">
-                        可以上传产品页面、智能体对话、演示录屏,也可以把截图直接粘贴到上方区域。它们用于理解产品,不会自动当作正文插图。
+                        可以上传产品页面、智能体对话或演示流程截图,也可以把截图直接粘贴到上方区域。它们用于理解产品,不会自动当作正文插图。
                       </p>
                     </div>
                   ) : (
                     <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                      {(draft.sourceMediaAssets ?? []).map((asset) => (
+                      {understandingMediaAssets(draft).map((asset) => (
                         <article
                           key={asset.id}
                           className="overflow-hidden rounded-lg border border-slate-200 bg-white"
                         >
                           <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-[180px_minmax(0,1fr)]">
                             <div className="relative aspect-video overflow-hidden rounded-md border border-slate-100 bg-slate-50">
-                              {asset.fileType === "image" ? (
-                                <Image
-                                  src={asset.url}
-                                  alt={asset.caption || asset.fileName}
-                                  fill
-                                  sizes="180px"
-                                  unoptimized
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <video
-                                  src={asset.url}
-                                  controls
-                                  className="h-full w-full bg-black object-contain"
-                                />
-                              )}
+                              <Image
+                                src={asset.url}
+                                alt={asset.caption || asset.fileName}
+                                fill
+                                sizes="180px"
+                                unoptimized
+                                className="object-cover"
+                              />
                             </div>
                             <div className="min-w-0 space-y-2">
                               <div className="flex items-center gap-2">
@@ -997,7 +1059,7 @@ export default function ProductLibraryPage() {
                                       caption: e.target.value,
                                     })
                                   }
-                                  placeholder="这张图/视频展示了什么"
+                                  placeholder="这张截图展示了什么"
                                   className="h-8 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 />
                                 <button
@@ -1024,8 +1086,7 @@ export default function ProductLibraryPage() {
                                 className="w-full resize-none rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs leading-5 text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                               />
                               <p className="truncate text-[11px] text-slate-400">
-                                {asset.fileType === "video" ? "视频" : "截图"} ·{" "}
-                                {asset.fileName} · {asset.sizeKb} KB
+                                截图 · {asset.fileName} · {asset.sizeKb} KB
                               </p>
                             </div>
                           </div>
@@ -1036,13 +1097,13 @@ export default function ProductLibraryPage() {
 
                   <label className="mt-4 block">
                     <span className="text-xs font-semibold text-slate-700">
-                      截图/视频理解摘要
+                      截图理解摘要
                     </span>
                     <textarea
                       value={draft.sourcePack?.mediaNotes ?? ""}
                       onChange={(e) => patchSource({ mediaNotes: e.target.value })}
                       rows={4}
-                      placeholder="这里会汇总截图和视频的理解结果。你可以改得更准确,例如：这是智能体对话页,面向网络工程师,用于一句话定位告警根因。"
+                      placeholder="这里会汇总截图理解结果。你可以改得更准确,例如：这是智能体对话页,面向网络工程师,用于一句话定位告警根因。"
                       className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </label>
@@ -1057,7 +1118,7 @@ export default function ProductLibraryPage() {
                       value={draft.sourcePack?.websiteNotes ?? ""}
                       onChange={(e) => patchSource({ websiteNotes: e.target.value })}
                       rows={5}
-                      placeholder="填写官网链接后会自动解析；你也可以在这里补充：定位、核心页面、产品模块、客户角色、希望文章强调的卖点。"
+                      placeholder="点击“解析官网”后会写入这里；你也可以手动补充：定位、核心页面、产品模块、客户角色、希望文章强调的卖点。"
                       className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </label>
@@ -1077,138 +1138,13 @@ export default function ProductLibraryPage() {
               </section>
 
               <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-sm font-semibold text-slate-900">
-                      图片素材库
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-500">
-                      只属于当前产品。生成产品文章时,系统会从这里挑选你上传的真实图片插入正文。
-                    </p>
-                  </div>
-                  <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                    {uploadingImage ? (
-                      <Loader2
-                        className="h-4 w-4 animate-spin"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <ImageIcon className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    上传产品图
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        void handleImageUpload(e.target.files?.[0] ?? null);
-                        e.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-
-                {(draft.imageAssets ?? []).length === 0 ? (
-                  <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-                    <ImageIcon
-                      className="mx-auto h-8 w-8 text-slate-300"
-                      aria-hidden="true"
-                    />
-                    <p className="mt-2 text-sm font-medium text-slate-700">
-                      还没有图片素材
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      上传产品首页、功能截图、流程图、架构图或视频封面。没有素材时,生成文章不会乱插图。
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {(draft.imageAssets ?? []).map((asset) => (
-                      <article
-                        key={asset.id}
-                        className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setPreviewAsset(asset)}
-                          className="relative block aspect-[16/10] w-full overflow-hidden bg-white"
-                        >
-                          <Image
-                            src={asset.url}
-                            alt={asset.caption || asset.fileName}
-                            fill
-                            sizes="(min-width: 1280px) 240px, (min-width: 640px) 45vw, 90vw"
-                            unoptimized
-                            className="h-full w-full object-cover"
-                          />
-                        </button>
-                        <div className="space-y-2 p-3">
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={asset.kind}
-                              onChange={(e) =>
-                                patchImageAsset(asset.id, {
-                                  kind: e.target.value as ProductImageKind,
-                                })
-                              }
-                              className="h-8 flex-1 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            >
-                              {PRODUCT_IMAGE_KIND_OPTIONS.map((kind) => (
-                                <option key={kind} value={kind}>
-                                  {kind}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => removeImageAsset(asset.id)}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                              aria-label="删除图片素材"
-                            >
-                              <Trash2 className="h-4 w-4" aria-hidden="true" />
-                            </button>
-                          </div>
-                          <input
-                            value={asset.caption}
-                            onChange={(e) =>
-                              patchImageAsset(asset.id, {
-                                caption: e.target.value,
-                              })
-                            }
-                            placeholder="图片说明/图注"
-                            className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                          <input
-                            value={asset.tags.join("、")}
-                            onChange={(e) =>
-                              patchImageAsset(asset.id, {
-                                tags: e.target.value
-                                  .split(/[、,，\n]/)
-                                  .map((tag) => tag.trim())
-                                  .filter(Boolean),
-                              })
-                            }
-                            placeholder="标签,如 首页、权限、流程"
-                            className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                          <p className="truncate text-[11px] text-slate-400">
-                            {asset.fileName}
-                          </p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h2 className="text-sm font-semibold text-slate-900">
-                      产品理解简介
+                      产品理解卡
                     </h2>
                     <p className="mt-1 text-xs text-slate-500">
-                      官网或 PDF 解析完成后会自动生成。请浏览一遍,把不准确的地方改掉,再补充缺失信息。
+                      基于上方资料手动生成 V2 产品卡。请浏览一遍,把不准确的地方改掉,再补充缺失信息。
                     </p>
                   </div>
                   <button
@@ -1222,81 +1158,143 @@ export default function ProductLibraryPage() {
                     ) : (
                       <Sparkles className="h-4 w-4" aria-hidden="true" />
                     )}
-                    {draft.understanding ? "重新生成产品理解" : "生成产品理解简介"}
+                    {generating
+                      ? "正在生成..."
+                      : draft.understanding
+                        ? "重新生成产品理解"
+                        : "生成产品理解卡"}
                   </button>
                 </div>
-
-                <textarea
-                  value={draft.understanding?.summary ?? ""}
-                  onChange={(e) =>
-                    patchDraft({
-                      understanding: {
-                        summary: e.target.value,
-                        targetUsers: draft.understanding?.targetUsers ?? [],
-                        coreCapabilities:
-                          draft.understanding?.coreCapabilities ?? [],
-                        contentAngles: draft.understanding?.contentAngles ?? [],
-                        missingInfo: draft.understanding?.missingInfo ?? [],
-                        generatedAt:
-                          draft.understanding?.generatedAt ??
-                          new Date().toISOString(),
-                        source: draft.understanding?.source ?? "manual",
-                      },
-                    })
-                  }
-                  rows={5}
-                  placeholder="上传 PDF 或填写官网链接后,这里会自动出现系统对产品的理解。你可以直接编辑。"
-                  className="mt-4 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-
-                {draft.understanding && (
-                  <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    <InfoList title="核心能力" items={draft.understanding.coreCapabilities} />
-                    <InfoList title="建议补充" items={draft.understanding.missingInfo} />
+                {understandingStatus && (
+                  <div
+                    className={cn(
+                      "mt-3 rounded-lg border px-3 py-2 text-xs leading-5",
+                      understandingStatus.type === "error"
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : understandingStatus.type === "success"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-blue-200 bg-blue-50 text-blue-700"
+                    )}
+                  >
+                    {understandingStatus.message}
                   </div>
                 )}
-              </section>
 
-              <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-semibold text-slate-900">
-                  写作额外上下文
-                </h2>
-                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="mt-4 space-y-4">
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-700">
-                      竞品/传统方案
+                      产品定义
                     </span>
                     <textarea
-                      value={draft.sourcePack?.competitorNotes ?? ""}
+                      value={draft.understanding?.definition ?? ""}
                       onChange={(e) =>
-                        patchSource({ competitorNotes: e.target.value })
+                        patchDraft({
+                          understanding: makeManualUnderstanding(
+                            e.target.value,
+                            draft.understanding
+                          ),
+                        })
                       }
                       rows={4}
+                      placeholder="给谁用,处理什么事情,最后产出什么。"
                       className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </label>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-700">
-                      热点/行业事件
-                    </span>
-                    <textarea
-                      value={draft.sourcePack?.trendNotes ?? ""}
-                      onChange={(e) => patchSource({ trendNotes: e.target.value })}
-                      rows={4}
-                      className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <ProductCardTextarea
+                      title="核心功能"
+                      hint="一行一个具体能力,不要写泛泛的智能化、提效。"
+                      value={entriesToText(draft.understanding?.coreFunctions ?? [])}
+                      placeholder="例如: 在浏览器里执行自动化任务"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          coreFunctions: textToEntries(value),
+                        })
+                      }
                     />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-700">
-                      截图/视频说明
-                    </span>
-                    <textarea
-                      value={draft.sourcePack?.imageRefs ?? ""}
-                      onChange={(e) => patchSource({ imageRefs: e.target.value })}
-                      rows={4}
-                      className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    <ProductCardTextarea
+                      title="目标客户/角色"
+                      hint="资料明确写到的客户优先;不确定就写保守推测。"
+                      value={entriesToText(draft.understanding?.targetCustomers ?? [])}
+                      placeholder="例如: 企业运营团队"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          targetCustomers: textToEntries(value),
+                        })
+                      }
                     />
-                  </label>
+                    <ProductCardTextarea
+                      title="用户痛点"
+                      hint="文章开头应该主要来自这里。"
+                      value={entriesToText(draft.understanding?.painPoints ?? [])}
+                      placeholder="例如: 网页里的重复操作仍需要人工处理"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          painPoints: textToEntries(value),
+                        })
+                      }
+                    />
+                    <ProductCardTextarea
+                      title="传统做法/替代方案"
+                      hint="写清以前靠什么做,比如 Excel、PPT、人工整理、RPA。"
+                      value={entriesToText(
+                        draft.understanding?.traditionalAlternatives ?? []
+                      )}
+                      placeholder="例如: 传统 RPA 或人工复制粘贴"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          traditionalAlternatives: textToEntries(value),
+                        })
+                      }
+                    />
+                    <ProductCardTextarea
+                      title="产品介入后的变化"
+                      hint="只写可确认的定性变化,不要补百分比或时间。"
+                      value={entriesToText(draft.understanding?.afterUseChanges ?? [])}
+                      placeholder="例如: 把部分浏览器重复操作交给 Agent 处理"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          afterUseChanges: textToEntries(value),
+                        })
+                      }
+                    />
+                    <ProductCardTextarea
+                      title="可用证据"
+                      hint="格式建议: 来源: 事实。比如 PDF: 支持浏览器自动化。"
+                      value={evidenceToText(draft.understanding?.evidence ?? [])}
+                      placeholder="例如: PDF: 支持在浏览器里执行自动化任务"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          evidence: textToEvidence(value),
+                        })
+                      }
+                    />
+                    <ProductCardTextarea
+                      title="禁写边界"
+                      hint="没有证据就不能写的内容。生成文章会优先尊重这里。"
+                      value={stringsToText(
+                        draft.understanding?.writingBoundaries ?? []
+                      )}
+                      placeholder="例如: 未提供真实客户资料,不得写客户名称或客户案例。"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          writingBoundaries: textToStrings(value),
+                        })
+                      }
+                    />
+                    <ProductCardTextarea
+                      title="需要追问"
+                      hint="这些不是正文素材,是提醒你还缺哪些关键信息。"
+                      value={stringsToText(draft.understanding?.questionsToAsk ?? [])}
+                      placeholder="例如: 是否有真实金融客户或行业客户案例?"
+                      onChange={(value) =>
+                        patchUnderstanding({
+                          questionsToAsk: textToStrings(value),
+                        })
+                      }
+                    />
+                  </div>
                 </div>
               </section>
 
@@ -1322,59 +1320,36 @@ export default function ProductLibraryPage() {
           )}
         </section>
       </main>
-      {previewAsset && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-6 py-8"
-          onClick={() => setPreviewAsset(null)}
-        >
-          <div
-            className="relative max-h-full w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewAsset(null)}
-              className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm hover:text-slate-900"
-              aria-label="关闭图片预览"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <div className="relative h-[78vh] w-full bg-slate-100">
-              <Image
-                src={previewAsset.url}
-                alt={previewAsset.caption || previewAsset.fileName}
-                fill
-                sizes="90vw"
-                unoptimized
-                className="object-contain"
-              />
-            </div>
-            <div className="border-t border-slate-200 px-5 py-4">
-              <p className="text-sm font-semibold text-slate-900">
-                {previewAsset.caption || previewAsset.fileName}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {previewAsset.kind} · {previewAsset.fileName}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function InfoList({ title, items }: { title: string; items: string[] }) {
+function ProductCardTextarea({
+  title,
+  hint,
+  value,
+  placeholder,
+  onChange,
+}: {
+  title: string;
+  hint: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3">
-      <p className="text-xs font-semibold text-slate-700">{title}</p>
-      <ul className="mt-2 space-y-1.5 text-xs leading-5 text-slate-500">
-        {items.length ? (
-          items.map((item) => <li key={item}>· {item}</li>)
-        ) : (
-          <li>暂无</li>
-        )}
-      </ul>
-    </div>
+    <label className="block rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <span className="text-xs font-semibold text-slate-800">{title}</span>
+      <span className="mt-1 block text-[11px] leading-4 text-slate-500">
+        {hint}
+      </span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={4}
+        placeholder={placeholder}
+        className="mt-3 w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      />
+    </label>
   );
 }

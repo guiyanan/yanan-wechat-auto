@@ -12,6 +12,7 @@ interface EmailArticlePreview {
   id: string;
   title: string;
   angleLabel?: string;
+  trafficHookLabel?: string;
   styleName?: string;
   summary: string;
   reviewUrl: string;
@@ -219,7 +220,7 @@ function buildEmailHtml(
           .map(
             (article, idx) => `
           <section style="border-top:1px solid #edf1f7;padding:18px 0;">
-            <p style="margin:0 0 8px;color:#1d6fff;font-size:12px;font-weight:700;">候选 ${idx + 1} · ${escapeHtml(article.angleLabel || "选题")}</p>
+            <p style="margin:0 0 8px;color:#1d6fff;font-size:12px;font-weight:700;">候选 ${idx + 1} · ${escapeHtml(formatArticleLabel(article))}</p>
             <h2 style="margin:0;font-size:18px;line-height:1.45;color:#101828;">${escapeHtml(article.title)}</h2>
             <p style="margin:8px 0;color:#667085;font-size:13px;">风格：${escapeHtml(article.styleName || "JOTO 官方风格")} · Humanize：已通过</p>
             <p style="margin:10px 0 14px;color:#344054;font-size:14px;line-height:1.8;">${escapeHtml(article.summary)}</p>
@@ -245,9 +246,16 @@ function buildEmailText(
     "",
     ...articles.map(
       (a, idx) =>
-        `${idx + 1}. ${a.title}\n角度：${a.angleLabel ?? "选题"}\n风格：${a.styleName ?? "JOTO 官方风格"}\n摘要：${a.summary}\nReview：${a.reviewUrl}`
+        `${idx + 1}. ${a.title}\n${formatArticleLabel(a)}\n风格：${a.styleName ?? "JOTO 官方风格"}\n摘要：${a.summary}\nReview：${a.reviewUrl}`
     ),
   ].join("\n\n");
+}
+
+function formatArticleLabel(article: EmailArticlePreview): string {
+  if (article.trafficHookLabel?.trim()) {
+    return `引流切口：${article.trafficHookLabel.trim()}`;
+  }
+  return `角度：${article.angleLabel ?? "选题"}`;
 }
 
 function escapeHtml(value: string): string {

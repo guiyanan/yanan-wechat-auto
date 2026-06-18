@@ -1,6 +1,6 @@
 "use client";
 
-import { Image, Newspaper, Package, Swords } from "lucide-react";
+import { Image, Package } from "lucide-react";
 import type { ArticleSourceContext } from "@/types";
 
 interface SourcePackFormProps {
@@ -17,30 +17,16 @@ const FIELDS: Array<{
 }> = [
   {
     key: "productNotes",
-    label: "产品素材",
-    helper: "产品名称、简介、核心能力、目标用户。",
-    placeholder: "例: Pharaoh Command 是面向企业网络运维的 AI 智问中枢,可接入 Meraki、Extreme、Aruba 等平台。",
+    label: "统一产品素材包",
+    helper: "来自 V2 产品卡整理后的可写事实、边界和资料缺口。",
+    placeholder: "这里通常由产品库自动带入,不再手动拼竞品、热点或自由角度。",
     icon: Package,
   },
   {
-    key: "competitorNotes",
-    label: "竞品/传统方案素材",
-    helper: "竞品名称、传统流程痛点、可确认的对比信息。",
-    placeholder: "例: 传统方式需要登录多个 Dashboard,告警、日志、设备位置无法统一关联。",
-    icon: Swords,
-  },
-  {
-    key: "trendNotes",
-    label: "热点/行业事件素材",
-    helper: "热点标题、摘要、链接或粘贴正文。",
-    placeholder: "例: 某行业文章讨论 AI Agent 进入企业运维,但落地仍卡在权限、数据源和流程编排。",
-    icon: Newspaper,
-  },
-  {
-    key: "imageRefs",
-    label: "截图/视频素材",
-    helper: "产品截图、视频封面、架构图或希望出现的画面说明。",
-    placeholder: "例: 智问中枢聊天截图、网络洞察页面、日志分析页面、知识库页面。",
+    key: "mediaNotes",
+    label: "截图理解摘要",
+    helper: "只保留截图/页面理解摘要;视频文件只保存,不自动解析。",
+    placeholder: "例: 智问中枢聊天截图展示用户用一句话查询网络告警。",
     icon: Image,
   },
 ];
@@ -51,10 +37,10 @@ export function SourcePackForm({ value, onChange }: SourcePackFormProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
-            半自动素材包
+            产品素材包
           </h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            生成会严格基于这些素材。竞品和热点缺事实时,系统会提示补充,不会替你编客户、数据或引用。
+            生成只读取 V2 产品卡整理后的素材包;旧的竞品、热点和截图自由字段不再参与正文生成。
           </p>
         </div>
       </div>

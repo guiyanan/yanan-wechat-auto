@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { humanize, sseFromGenerator } from "@/lib/qwen";
+import { getDeepSeekChatOptions } from "@/lib/deepseek";
 import { ARTICLE_TYPES, type ArticleType } from "@/lib/articleType";
 
 export const runtime = "nodejs";
@@ -30,7 +31,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const gen = humanize({ ...input, signal: req.signal });
+  const gen = humanize({
+    ...input,
+    ...getDeepSeekChatOptions(),
+    signal: req.signal,
+  });
   const stream = sseFromGenerator(gen);
   return new Response(stream, {
     headers: {

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Product } from "@/types";
+import { normalizeOptionalProductUnderstanding } from "@/lib/productUnderstandingForm";
 
 interface ProductStoreState {
   products: Record<string, Product>;
@@ -21,21 +22,39 @@ function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
+function sanitizeProduct(product: Product): Product {
+  const sanitized = { ...product };
+  const understanding = normalizeOptionalProductUnderstanding(product.understanding);
+  if (understanding) {
+    sanitized.understanding = understanding;
+  } else {
+    delete sanitized.understanding;
+  }
+  return sanitized;
+}
+
 function newerProduct(current: Product | undefined, incoming: Product): Product {
-  if (!current) return incoming;
+  const cleanIncoming = sanitizeProduct(incoming);
+  if (!current) return cleanIncoming;
+  const cleanCurrent = sanitizeProduct(current);
   const currentTime = Date.parse(current.updatedAt ?? "");
   const incomingTime = Date.parse(incoming.updatedAt ?? "");
   if (Number.isFinite(incomingTime) && incomingTime > (currentTime || 0)) {
-    return incoming;
+    return cleanIncoming;
   }
-  return current;
+  return cleanCurrent;
 }
 
 function mergeProductRecords(
   localProducts: Record<string, Product>,
   serverProducts: Record<string, Product>
 ): Record<string, Product> {
-  const merged: Record<string, Product> = { ...serverProducts };
+  const merged: Record<string, Product> = Object.fromEntries(
+    Object.entries(serverProducts).map(([id, product]) => [
+      id,
+      sanitizeProduct(product),
+    ])
+  );
   for (const product of Object.values(localProducts)) {
     merged[product.id] = newerProduct(merged[product.id], product);
   }
@@ -105,7 +124,7 @@ export const useProductStore = create<ProductStoreState>()(
       },
       upsert: (product) =>
         set((state) => {
-          const saved = { ...product, updatedAt: nowIso() };
+          const saved = sanitizeProduct({ ...product, updatedAt: nowIso() });
           persistProduct(saved);
           return {
             products: {

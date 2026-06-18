@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { buildPromptProfileFromStyle } from "@/lib/learnedStyles";
 import type { LearnedWritingStyle } from "@/types";
 
 interface LearnedStyleState {
@@ -9,8 +10,14 @@ interface LearnedStyleState {
   serverLoaded: boolean;
   serverError?: string;
   loadFromServer: () => Promise<void>;
-  upsertStyle: (style: LearnedWritingStyle) => void;
-  removeStyle: (id: string) => void;
+  upsertStyle: (style: LearnedWritingStyle) => Promise<void>;
+  removeStyle: (id: string) => Promise<void>;
+}
+
+interface StyleLibraryResponse {
+  ok?: boolean;
+  styles?: LearnedWritingStyle[];
+  error?: string;
 }
 
 function isBrowser(): boolean {
@@ -21,17 +28,27 @@ function newerStyle(
   current: LearnedWritingStyle | undefined,
   incoming: LearnedWritingStyle
 ): LearnedWritingStyle {
-  if (!current) return incoming;
+  const normalizedIncoming = normalizeStyle(incoming);
+  if (!current) return normalizedIncoming;
   const currentTime = Date.parse(current.createdAt ?? "");
-  const incomingTime = Date.parse(incoming.createdAt ?? "");
+  const incomingTime = Date.parse(normalizedIncoming.createdAt ?? "");
   if (Number.isFinite(incomingTime) && incomingTime > (currentTime || 0)) {
-    return incoming;
+    return normalizedIncoming;
   }
-  return current;
+  return normalizeStyle(current);
+}
+
+function normalizeStyle(style: LearnedWritingStyle): LearnedWritingStyle {
+  return {
+    ...style,
+    scope: style.scope ?? "product",
+    promptProfile:
+      style.promptProfile?.trim() || buildPromptProfileFromStyle(style),
+  };
 }
 
 function sortStyles(styles: LearnedWritingStyle[]): LearnedWritingStyle[] {
-  return [...styles].sort(
+  return styles.map(normalizeStyle).sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
   );
 }
@@ -41,36 +58,54 @@ function mergeStyles(
   serverStyles: LearnedWritingStyle[]
 ): LearnedWritingStyle[] {
   const byId = new Map<string, LearnedWritingStyle>();
-  for (const style of serverStyles) byId.set(style.id, style);
+  for (const style of serverStyles) byId.set(style.id, normalizeStyle(style));
   for (const style of localStyles) {
-    byId.set(style.id, newerStyle(byId.get(style.id), style));
+    byId.set(style.id, newerStyle(byId.get(style.id), normalizeStyle(style)));
   }
   return sortStyles(Array.from(byId.values()));
 }
 
-async function saveStyleLibrary(styles: LearnedWritingStyle[]) {
-  if (!isBrowser()) return;
-  await fetch("/api/styles/library", {
+async function parseStyleLibraryResponse(
+  res: Response,
+  fallbackMessage: string
+): Promise<LearnedWritingStyle[]> {
+  const data = (await res.json()) as StyleLibraryResponse;
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error ?? fallbackMessage);
+  }
+  return sortStyles(data.styles ?? []);
+}
+
+async function saveStyleLibrary(
+  styles: LearnedWritingStyle[]
+): Promise<LearnedWritingStyle[]> {
+  if (!isBrowser()) return sortStyles(styles);
+  const res = await fetch("/api/styles/library", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ styles }),
   });
+  return parseStyleLibraryResponse(res, "保存风格库失败");
 }
 
-function persistStyle(style: LearnedWritingStyle) {
-  if (!isBrowser()) return;
-  void fetch("/api/styles/library", {
+async function persistStyle(
+  style: LearnedWritingStyle
+): Promise<LearnedWritingStyle[]> {
+  if (!isBrowser()) return sortStyles([style]);
+  const res = await fetch("/api/styles/library", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ style }),
   });
+  return parseStyleLibraryResponse(res, "保存风格失败");
 }
 
-function deletePersistedStyle(id: string) {
-  if (!isBrowser()) return;
-  void fetch(`/api/styles/library?id=${encodeURIComponent(id)}`, {
+async function deletePersistedStyle(id: string): Promise<LearnedWritingStyle[]> {
+  if (!isBrowser()) return [];
+  const res = await fetch(`/api/styles/library?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+  return parseStyleLibraryResponse(res, "删除风格失败");
 }
 
 export const useLearnedStyleStore = create<LearnedStyleState>()(
@@ -91,14 +126,18 @@ export const useLearnedStyleStore = create<LearnedStyleState>()(
           if (!res.ok || !data.ok) {
             throw new Error(data.error ?? "读取项目风格库失败");
           }
-          const serverStyles = data.styles ?? [];
-          const merged = mergeStyles(get().styles, serverStyles);
+          const serverStyles = (data.styles ?? []).map(normalizeStyle);
+          const merged =
+            serverStyles.length === 0 ? [] : mergeStyles(get().styles, serverStyles);
           set({
             styles: merged,
             serverLoaded: true,
             serverError: undefined,
           });
-          if (JSON.stringify(merged) !== JSON.stringify(serverStyles)) {
+          if (
+            serverStyles.length > 0 &&
+            JSON.stringify(merged) !== JSON.stringify(serverStyles)
+          ) {
             void saveStyleLibrary(merged);
           }
         } catch (err) {
@@ -109,20 +148,14 @@ export const useLearnedStyleStore = create<LearnedStyleState>()(
           });
         }
       },
-      upsertStyle: (style) =>
-        set((state) => {
-          const without = state.styles.filter((s) => s.id !== style.id);
-          const styles = sortStyles([style, ...without]);
-          persistStyle(style);
-          return { styles };
-        }),
-      removeStyle: (id) =>
-        set((state) => {
-          deletePersistedStyle(id);
-          return {
-            styles: state.styles.filter((s) => s.id !== id),
-          };
-        }),
+      upsertStyle: async (style) => {
+        const styles = await persistStyle(normalizeStyle(style));
+        set({ styles });
+      },
+      removeStyle: async (id) => {
+        const styles = await deletePersistedStyle(id);
+        set({ styles });
+      },
     }),
     {
       name: "joto-learned-writing-styles-v1",

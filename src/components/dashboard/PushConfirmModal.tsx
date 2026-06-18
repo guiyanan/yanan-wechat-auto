@@ -78,6 +78,9 @@ export function PushConfirmModal({
   const theme = (article.exportTheme ??
     article.layoutTheme ??
     "joto") as WechatTheme;
+  const isTrendArticle = article.generationMeta?.mode === "trend-radar";
+  const effectiveTheme: WechatTheme = isTrendArticle ? "minimal" : theme;
+  const effectiveDecorate = !isTrendArticle;
   const selectedAccount = singleAccount;
   const digest = article.contentHtml
     .replace(/<[^>]+>/g, "")
@@ -119,12 +122,13 @@ export function PushConfirmModal({
           title: article.title,
           bodyHtml: article.contentHtml,
           author: article.createdBy,
-          theme,
-          decorate: true,
+          theme: effectiveTheme,
+          decorate: effectiveDecorate,
           addAigcNotice: true,
           articleId: article.id,
           productName: product?.name,
-          coverStyleLabel: WECHAT_THEME_LABELS[theme],
+          coverStyleLabel: WECHAT_THEME_LABELS[effectiveTheme],
+          coverImageUrl: article.coverImageUrl ?? article.coverCandidates[0],
           digest,
           accountId: selectedAccountId,
           jotoFollowHeaderHtml: followHeader?.html,
@@ -345,8 +349,8 @@ export function PushConfirmModal({
               contentHtml={article.contentHtml}
               coverUrl={article.coverImageUrl ?? article.coverCandidates[0]}
               author={article.createdBy}
-              theme={theme}
-              decorate
+              theme={effectiveTheme}
+              decorate={effectiveDecorate}
               minHeight={620}
             />
           </div>

@@ -479,6 +479,10 @@ export function buildQwenHumanizeFn(args: {
   styleName: string;
   styleProfile: string;
   articleType: import("@/lib/articleType").ArticleType;
+  model?: string;
+  apiKey?: string;
+  apiKeyEnvName?: string;
+  baseURL?: string;
   // We accept `humanize` as a param to avoid a circular import when mocking
   humanize: (
     a: import("@/lib/qwen").HumanizeArgs
@@ -492,6 +496,10 @@ export function buildQwenHumanizeFn(args: {
       styleName: args.styleName,
       styleProfile: args.styleProfile,
       articleType: args.articleType,
+      model: args.model,
+      apiKey: args.apiKey,
+      apiKeyEnvName: args.apiKeyEnvName,
+      baseURL: args.baseURL,
       signal,
     })) {
       chunks.push(delta);

@@ -7,6 +7,14 @@ export type AngleStrategy =
   | "scenario"
   | "trend";
 
+export type TrafficHookMode =
+  | "mainstream_product"
+  | "category_heat"
+  | "domestic_alternative"
+  | "usage_explainer"
+  | "pitfall"
+  | "scenario";
+
 export interface TopicPlan {
   id: string;
   angleLabel: string;
@@ -24,4 +32,7 @@ export interface TopicPlan {
   sourceNeedLevel: "low" | "medium" | "high";
   contentLength?: ContentLength;
   angleStrategy?: AngleStrategy;
+  trafficHookLabel?: string;
+  trafficHookMode?: TrafficHookMode;
+  mainstreamAnchor?: string;
 }

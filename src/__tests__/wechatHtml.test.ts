@@ -132,6 +132,22 @@ describe("wechatHtml · exportWechatHtml", () => {
     expect(minimalDecorated).not.toContain("企业微信");
   });
 
+  it("renders hotspot-style plain paragraphs without decorated section furniture", () => {
+    const html = exportWechatHtml({
+      title: "现在大家都在用哪些 AI 笔记本",
+      bodyHtml: "<p>最近很多人开始试 AI 笔记工具。</p><p>不是为了赶时髦,而是真的不想再手抄会议记录。</p>",
+      theme: "minimal",
+      decorate: false,
+    });
+
+    expect(html).toContain("最近很多人开始试 AI 笔记工具。");
+    expect(html).not.toContain("点击蓝字 关注我们");
+    expect(html).not.toContain("PART");
+    expect(html).not.toContain("joto-follow-header");
+    expect(html).not.toContain("<blockquote");
+    expect(html).not.toContain("<h2");
+  });
+
   it("uses captured JOTO furniture when provided", () => {
     const html = exportWechatHtml({
       title: "x",

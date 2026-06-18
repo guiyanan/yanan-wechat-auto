@@ -77,7 +77,6 @@ describe("wechat API routes", () => {
       })
     );
     const data = await res.json();
-
     expect(res.status).toBe(200);
     expect(data.ok).toBe(true);
     expect(data.mediaId).toBe("DRAFT_MEDIA_123");
@@ -132,7 +131,6 @@ describe("wechat API routes", () => {
       })
     );
     const data = await res.json();
-
     expect(res.status).toBe(200);
     expect(data.ok).toBe(true);
     expect(data.mediaId).toBe("DRAFT_MEDIA_456");
@@ -146,5 +144,63 @@ describe("wechat API routes", () => {
     expect(draftBody.articles[0].content).toContain(
       "https://mmbiz.qpic.cn/qr.jpg"
     );
+  });
+
+  it("push draft route uploads the selected remote cover as a 300x300 thumb", async () => {
+    vi.stubEnv("WECHAT_DEFAULT_THUMB_MEDIA_ID", "");
+    const remoteCoverBytes = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#1268ff"/></svg>'
+    );
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        arrayBuffer: async () =>
+          remoteCoverBytes.buffer.slice(
+            remoteCoverBytes.byteOffset,
+            remoteCoverBytes.byteOffset + remoteCoverBytes.byteLength
+          ),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: "TOKEN_OK", expires_in: 7200 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ media_id: "REMOTE_THUMB_123" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ media_id: "DRAFT_MEDIA_REMOTE" }),
+      });
+
+    const res = await pushWechatDraft(
+      new Request("http://localhost/api/wechat/push-draft", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "测试文章",
+          bodyHtml: "<p>正文</p>",
+          theme: "minimal",
+          coverImageUrl:
+            "https://images.unsplash.com/photo-1?ixid=abc&w=300&h=300",
+        }),
+      })
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.ok).toBe(true);
+    expect(data.thumbMediaId).toBe("REMOTE_THUMB_123");
+    expect(data.remoteCover).toBe(true);
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "https://images.unsplash.com/photo-1?ixid=abc&w=300&h=300"
+    );
+    expect(mockFetch.mock.calls[2][0]).toContain("material/add_material");
+
+    const uploadedForm = mockFetch.mock.calls[2][1].body as FormData;
+    const uploadedBlob = uploadedForm.get("media") as Blob;
+    expect(uploadedBlob.type).toBe("image/png");
+
+    const draftBody = JSON.parse(mockFetch.mock.calls[3][1].body);
+    expect(draftBody.articles[0].thumb_media_id).toBe("REMOTE_THUMB_123");
   });
 });

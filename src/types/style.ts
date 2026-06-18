@@ -8,8 +8,11 @@ export interface WritingStyle {
   promptProfile: string;
 }
 
+export type LearnedWritingStyleScope = "product" | "trend";
+
 export interface LearnedWritingStyle {
   id: string;
+  scope?: LearnedWritingStyleScope;
   name: string;
   sourceUrls: string[];
   toneProfile: string;
@@ -17,6 +20,7 @@ export interface LearnedWritingStyle {
   openingPattern: string;
   paragraphPattern: string;
   keySentencePattern: string;
+  promptProfile?: string;
   sampleDigest: string;
   createdAt: string;
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FileText, Loader2, Mail, Send } from "lucide-react";
 import type { Article, Product } from "@/types";
 import { formatRelativeDate } from "@/lib/articles";
+import { getTrendStyleLabel } from "@/lib/trendStyleLabel";
 import { AiScoreBar } from "./AiScoreBar";
 import { StatusBadge } from "./StatusBadge";
 import anglesData from "@/data/angles.json";
@@ -12,12 +13,21 @@ const ANGLES = anglesData as Angle[];
 const STYLES = stylesData as WritingStyle[];
 
 export function resolveAngleName(article: Article): string | null {
+  if (article.generationMeta?.mode === "trend-radar") {
+    const label =
+      article.generationMeta.trafficHookLabel ??
+      article.generationMeta.angleLabel ??
+      article.customAngle;
+    return label ? `引流切口:${label}` : "引流切口";
+  }
   if (article.customAngle) return `自定义:${article.customAngle}`;
   if (!article.angleId) return null;
   return ANGLES.find((a) => a.id === article.angleId)?.name ?? null;
 }
 
 export function resolveStyleName(article: Article): string | null {
+  const trendStyleLabel = getTrendStyleLabel(article);
+  if (trendStyleLabel) return trendStyleLabel;
   if (article.generationMeta?.learnedStyleName) {
     return article.generationMeta.learnedStyleName;
   }

@@ -15,6 +15,7 @@ import {
   getContentLengthOption,
 } from "@/lib/contentSettings";
 import { countProductImagesInHtml } from "@/lib/productImages";
+import { getTrendStyleLabel } from "@/lib/trendStyleLabel";
 import { cn } from "@/lib/utils";
 
 const ANGLES = anglesData as Angle[];
@@ -32,12 +33,21 @@ interface BatchArticleCardProps {
 }
 
 function resolveAngleName(article: Article): string {
+  if (article.generationMeta?.mode === "trend-radar") {
+    const label =
+      article.generationMeta.trafficHookLabel ??
+      article.generationMeta.angleLabel ??
+      article.customAngle;
+    return label ? `引流切口：${label}` : "引流切口";
+  }
   if (article.customAngle) return `自定义：${article.customAngle}`;
   if (!article.angleId) return "未知角度";
   return ANGLES.find((a) => a.id === article.angleId)?.name ?? article.angleId;
 }
 
 function resolveStyleName(article: Article): string {
+  const trendStyleLabel = getTrendStyleLabel(article);
+  if (trendStyleLabel) return trendStyleLabel;
   if (article.generationMeta?.learnedStyleName) {
     return article.generationMeta.learnedStyleName;
   }
@@ -72,8 +82,8 @@ export function BatchArticleCard({
   const strategyOption = getAngleStrategyOption(
     article.generationMeta?.angleStrategy
   );
-  const styleName =
-    article.generationMeta?.learnedStyleName ?? resolveStyleName(article);
+  const isTrendArticle = article.generationMeta?.mode === "trend-radar";
+  const styleName = resolveStyleName(article);
   const preview = htmlPreview(article.contentHtml);
   const imageCount = countProductImagesInHtml(article.contentHtml);
   const canSend = humanizeStatus === "passed";
@@ -148,7 +158,9 @@ export function BatchArticleCard({
                   {styleName}
                 </span>
                 <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
-                  {lengthOption.label} · {strategyOption.label}
+                  {isTrendArticle
+                    ? `${lengthOption.label} · 热点引流`
+                    : `${lengthOption.label} · ${strategyOption.label}`}
                 </span>
                 {imageCount > 0 && (
                   <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">

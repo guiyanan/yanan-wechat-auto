@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { generateTitles, parseTitles, QwenAuthError } from "@/lib/qwen";
+import { getDeepSeekChatOptions } from "@/lib/deepseek";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,11 @@ export async function POST(req: NextRequest) {
     return new Response("invalid json", { status: 400 });
   }
   try {
-    const titles = await generateTitles({ ...input, signal: req.signal });
+    const titles = await generateTitles({
+      ...input,
+      ...getDeepSeekChatOptions(),
+      signal: req.signal,
+    });
     return Response.json({ titles });
   } catch (err) {
     if (err instanceof QwenAuthError) {

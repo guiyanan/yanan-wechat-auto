@@ -123,7 +123,7 @@ describe("wechatThemes", () => {
       expect(defaultThemeForArticleType("产品介绍")).toBe("joto");
       expect(defaultThemeForArticleType("产品差异")).toBe("joto");
       expect(defaultThemeForArticleType("竞品对比")).toBe("joto");
-      expect(defaultThemeForArticleType("时事热点")).toBe("joto");
+      expect(defaultThemeForArticleType("时事热点")).toBe("minimal");
     });
 
     it("returns joto for undefined so review defaults to the公众号模板", () => {

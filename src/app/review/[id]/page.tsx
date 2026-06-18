@@ -104,6 +104,9 @@ function ReviewView({ article }: { article: Article }) {
     article.layoutTheme ?? defaultThemeForArticleType(articleType)
   );
   const [decorate, setDecorate] = useState(true);
+  const isTrendArticle = article.generationMeta?.mode === "trend-radar";
+  const effectiveTheme: WechatTheme = isTrendArticle ? "minimal" : selectedTheme;
+  const effectiveDecorate = isTrendArticle ? false : decorate;
 
   useEffect(() => {
     void loadProducts();
@@ -156,8 +159,8 @@ function ReviewView({ article }: { article: Article }) {
         author: article.createdBy,
         publishedAt: article.publishedAt ?? new Date().toISOString(),
         addExplicitNotice: addAigcNotice,
-        theme: selectedTheme,
-        decorate,
+        theme: effectiveTheme,
+        decorate: effectiveDecorate,
         meta: buildAigcMetadata({
           articleId: article.id,
           humanReviewed: true,
@@ -166,7 +169,7 @@ function ReviewView({ article }: { article: Article }) {
         jotoFollowHeaderHtml: followHeader?.html,
         jotoContactFooterHtml: contactFooter?.html,
       }),
-    [article, addAigcNotice, selectedTheme, decorate, followHeader?.html, contactFooter?.html]
+    [article, addAigcNotice, effectiveTheme, effectiveDecorate, followHeader?.html, contactFooter?.html]
   );
 
   async function handlePublish() {
@@ -218,8 +221,8 @@ function ReviewView({ article }: { article: Article }) {
           title: article.title,
           bodyHtml: article.contentHtml,
           author: article.createdBy,
-          theme: selectedTheme,
-          decorate,
+          theme: effectiveTheme,
+          decorate: effectiveDecorate,
           addAigcNotice: addAigcNotice,
           articleId: article.id,
           digest: article.contentHtml

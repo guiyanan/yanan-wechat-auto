@@ -66,12 +66,38 @@ export interface ProductSourcePack {
   mediaNotes?: string;
 }
 
+export type ProductUnderstandingConfidence = "explicit" | "inferred";
+
+export type ProductUnderstandingEvidenceSource =
+  | "product"
+  | "website"
+  | "pdf"
+  | "media"
+  | "manual"
+  | "inferred";
+
+export interface ProductUnderstandingEntry {
+  text: string;
+  confidence: ProductUnderstandingConfidence;
+  basis?: string;
+}
+
+export interface ProductUnderstandingEvidence {
+  sourceType: ProductUnderstandingEvidenceSource;
+  sourceLabel: string;
+  text: string;
+}
+
 export interface ProductUnderstanding {
-  summary: string;
-  targetUsers: string[];
-  coreCapabilities: string[];
-  contentAngles: string[];
-  missingInfo: string[];
+  definition: string;
+  coreFunctions: ProductUnderstandingEntry[];
+  targetCustomers: ProductUnderstandingEntry[];
+  painPoints: ProductUnderstandingEntry[];
+  traditionalAlternatives: ProductUnderstandingEntry[];
+  afterUseChanges: ProductUnderstandingEntry[];
+  evidence: ProductUnderstandingEvidence[];
+  writingBoundaries: string[];
+  questionsToAsk: string[];
   generatedAt: string;
-  source: "qwen" | "fallback" | "manual";
+  source: "deepseek" | "qwen" | "fallback" | "manual";
 }

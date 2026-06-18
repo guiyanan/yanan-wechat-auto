@@ -15,12 +15,18 @@ import { useArticleStore } from "@/store/articleStore";
 import { useEmailStore } from "@/store/emailStore";
 import { useProductStore } from "@/store/productStore";
 import { BatchArticleCard } from "@/components/batch/BatchArticleCard";
+import { TrendSourceTracePanel } from "@/components/batch/TrendSourceTracePanel";
 import { WechatArticleFrame } from "@/components/wechat/WechatArticleFrame";
 import { getAllProducts } from "@/lib/articles";
 import { mergeProducts } from "@/lib/productCatalog";
 import { inferArticleType } from "@/lib/articleType";
 import { htmlToMarkdown, markdownToHtml } from "@/lib/markdown";
-import { cleanGeneratedMarkdown } from "@/lib/generatedMarkdown";
+import {
+  postProcessGeneratedMarkdown,
+} from "@/lib/generatedMarkdown";
+import { getTrendStyleLabel } from "@/lib/trendStyleLabel";
+import { postProcessTrendBody } from "@/lib/trendPostProcess";
+import { buildTrendHumanizeRequest } from "@/lib/trendHumanize";
 import anglesData from "@/data/angles.json";
 import stylesData from "@/data/styles.json";
 import type { Angle, Article, Product, WritingStyle } from "@/types";
@@ -31,12 +37,21 @@ const STYLES = stylesData as WritingStyle[];
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function resolveAngleName(article: Article): string {
+  if (article.generationMeta?.mode === "trend-radar") {
+    const label =
+      article.generationMeta.trafficHookLabel ??
+      article.generationMeta.angleLabel ??
+      article.customAngle;
+    return label ? `引流切口：${label}` : "引流切口";
+  }
   if (article.customAngle) return `自定义：${article.customAngle}`;
   if (!article.angleId) return "未知角度";
   return ANGLES.find((a) => a.id === article.angleId)?.name ?? article.angleId;
 }
 
 function resolveStyleName(article: Article): string {
+  const trendStyleLabel = getTrendStyleLabel(article);
+  if (trendStyleLabel) return trendStyleLabel;
   if (article.generationMeta?.learnedStyleName) return article.generationMeta.learnedStyleName;
   return STYLES.find((s) => s.id === article.styleId)?.name ?? article.styleId;
 }
@@ -162,6 +177,12 @@ export default function BatchPreviewPage({
 
   const selectedArticle =
     articles.find((a) => a.id === selectedId) ?? firstPreviewableArticle;
+  const selectedTrendSources =
+    selectedArticle?.generationMeta?.mode === "trend-radar"
+      ? selectedArticle.generationMeta.sourceTrace
+      : undefined;
+  const selectedIsTrendArticle =
+    selectedArticle?.generationMeta?.mode === "trend-radar";
   const passedArticles = articles.filter(isHumanizePassed);
   const runningHumanizeCount = articles.filter((a) => humanizeStatus(a) === "running").length;
   const failedHumanizeCount = articles.filter((a) => humanizeStatus(a) === "failed").length;
@@ -175,6 +196,12 @@ export default function BatchPreviewPage({
   const runHumanizeArticle = useCallback(
     async (article: Article) => {
       if (humanizeStatus(article) === "running") return;
+      const isTrendArticle = article.generationMeta?.mode === "trend-radar";
+      const articleProduct = productMap.get(article.productId);
+      const trendPostProcessContext = {
+        product: articleProduct?.name,
+        productDesc: articleProduct?.description,
+      };
       const style = STYLES.find((s) => s.id === article.styleId);
       const articleType = inferArticleType({
         angleId: article.angleId,
@@ -185,7 +212,15 @@ export default function BatchPreviewPage({
     // Going through Markdown (instead of stripping to plain text) preserves
     // **bold** spans, ## headings, - lists, > blockquotes — without this the
     // humanized article comes back as a flat sequence of <p> tags.
-    const markdown = cleanGeneratedMarkdown(htmlToMarkdown(article.contentHtml));
+    const markdown = isTrendArticle
+      ? postProcessTrendBody(
+          htmlToMarkdown(article.contentHtml),
+          trendPostProcessContext
+        )
+      : postProcessGeneratedMarkdown(
+          htmlToMarkdown(article.contentHtml),
+          article.generationMeta?.contentLength
+        );
 
     if (!markdown.trim()) {
       patch(article.id, {
@@ -206,19 +241,27 @@ export default function BatchPreviewPage({
     });
 
     try {
+      const requestBody = isTrendArticle
+        ? buildTrendHumanizeRequest({
+            markdown,
+            styleName: resolveStyleName(article),
+          })
+        : {
+            text: markdown,
+            articleType,
+            styleName: style?.name ?? "默认",
+            styleProfile: style?.promptProfile ?? "",
+            intent: undefined,
+            // Preserve the article's visual structure (h2 / h3 / list /
+            // blockquote) — humanize only rewrites paragraph blocks so the
+            // hand-curated layout from the generation step survives.
+            preserveStructure: true,
+          };
+
       const res = await fetch("/api/humanize/pipeline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: markdown,
-          articleType,
-          styleName: style?.name ?? "默认",
-          styleProfile: style?.promptProfile ?? "",
-          // Preserve the article's visual structure (h2 / h3 / list /
-          // blockquote) — humanize only rewrites paragraph blocks so the
-          // hand-curated layout from the generation step survives.
-          preserveStructure: true,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
@@ -242,7 +285,14 @@ export default function BatchPreviewPage({
 
       // Convert pipeline output (Markdown) back to rich HTML — preserves
       // headings, **bold**, lists, blockquotes from Qwen's rewrite.
-      const newHtml = markdownToHtml(cleanGeneratedMarkdown(data.text));
+      const newHtml = markdownToHtml(
+        isTrendArticle
+          ? postProcessTrendBody(data.text, trendPostProcessContext)
+          : postProcessGeneratedMarkdown(
+              data.text,
+              article.generationMeta?.contentLength
+            )
+      );
 
       patch(article.id, {
         contentHtml: newHtml,
@@ -277,7 +327,7 @@ export default function BatchPreviewPage({
       toast.error(`Humanize 失败：${article.title} · ${msg}`);
     }
     },
-    [patch]
+    [patch, productMap]
   );
 
   useEffect(() => {
@@ -356,9 +406,8 @@ export default function BatchPreviewPage({
             title: article.title,
             angleLabel:
               article.generationMeta?.angleLabel ?? resolveAngleName(article),
-            styleName:
-              article.generationMeta?.learnedStyleName ??
-              resolveStyleName(article),
+            trafficHookLabel: article.generationMeta?.trafficHookLabel,
+            styleName: resolveStyleName(article),
             summary: htmlPreview(article.contentHtml, 120),
             reviewUrl: `${origin}/review/${article.id}`,
             humanizeStatus: humanizeStatus(article),
@@ -511,6 +560,7 @@ export default function BatchPreviewPage({
               当前页预览
             </span>
           </div>
+          <TrendSourceTracePanel sources={selectedTrendSources} />
           <WechatArticleFrame
             title={selectedArticle?.title ?? "JOTO 公众号预览"}
             contentHtml={selectedArticle?.contentHtml ?? ""}
@@ -518,8 +568,11 @@ export default function BatchPreviewPage({
               selectedArticle?.coverImageUrl ?? selectedArticle?.coverCandidates[0]
             }
             author={selectedArticle?.createdBy}
-            theme={selectedArticle?.layoutTheme ?? "joto"}
-            decorate
+            theme={
+              selectedArticle?.layoutTheme ??
+              (selectedIsTrendArticle ? "minimal" : "joto")
+            }
+            decorate={!selectedIsTrendArticle}
             fillHeight
             className="h-[720px] lg:min-h-0 lg:flex-1"
             iframeClassName="h-full"
