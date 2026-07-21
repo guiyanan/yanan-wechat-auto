@@ -46,6 +46,21 @@ describe("cleanGeneratedMarkdown", () => {
     expect(output).not.toContain("事实点：");
   });
 
+  it("removes leaked golden-sentence labels from paragraphs and quotes", () => {
+    const output = cleanGeneratedMarkdown(
+      [
+        "> 金句：数据不发烫，但敢拍板。",
+        "",
+        "- 蓝色金句：少一点猜，会议就少一点绕。",
+      ].join("\n")
+    );
+
+    expect(output).toContain("> 数据不发烫，但敢拍板。");
+    expect(output).toContain("- 少一点猜，会议就少一点绕。");
+    expect(output).not.toContain("金句：");
+    expect(output).not.toContain("蓝色金句：");
+  });
+
   it("removes generated title lines from the article body", () => {
     const output = cleanGeneratedMarkdown(
       "标题：还在截图抄功能表？竞品报告先别装专业\n\n01 很多人做竞品分析,第一步就是打开官网。"
@@ -131,6 +146,15 @@ describe("cleanGeneratedMarkdown", () => {
     );
     expect(cleanGeneratedTitle("钩子：AI 运维真正该看什么")).toBe(
       "AI 运维真正该看什么"
+    );
+  });
+
+  it("extracts the first usable title from JSON-array-like title fragments", () => {
+    expect(cleanGeneratedTitle('["设计团队的内耗，藏在哪里","打样前3')).toBe(
+      "设计团队的内耗，藏在哪里"
+    );
+    expect(cleanGeneratedTitle('["试用AI数据分析工具被忽悠瘸了？","下单前最该先看的一件事"]')).toBe(
+      "试用AI数据分析工具被忽悠瘸了？"
     );
   });
 });

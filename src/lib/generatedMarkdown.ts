@@ -15,7 +15,7 @@ function stripEmojiListMarker(line: string): string {
 }
 
 const INTERNAL_PLANNING_LABEL =
-  /^(\s*(?:#{1,6}\s*)?(?:(?:\d{1,2}|[一二三四五六七八九十]+)(?:[.、]\s*|\s+))?)(?:开头钩子|开篇钩子|开场钩子|钩子|开场|第一章|第二章|角度|事实点|图片建议|风险提示|写作方向|金句)\s*[：:]\s*/;
+  /^(\s*(?:#{1,6}\s*)?(?:>\s*)?(?:[-*]\s*)?(?:(?:\d{1,2}|[一二三四五六七八九十]+)(?:[.、]\s*|\s+))?)(?:开头钩子|开篇钩子|开场钩子|钩子|开场|第一章|第二章|角度|事实点|图片建议|风险提示|写作方向|蓝色金句|重点金句|金句)\s*[：:]\s*/;
 
 function stripInternalPlanningLabel(line: string): string {
   return line.replace(INTERNAL_PLANNING_LABEL, "$1");
@@ -123,9 +123,18 @@ export function cleanGeneratedMarkdown(markdown: string): string {
 }
 
 export function cleanGeneratedTitle(title: string): string {
+  const trimmed = title.trim();
+  const jsonishTitle =
+    /^[\[\["“]/.test(trimmed)
+      ? trimmed.match(/["“]([^"”\]\n]{2,80})["”]?/)
+      : null;
+  const source = jsonishTitle?.[1] ?? title;
+
   return stripInternalPlanningLabel(
-    title
+    source
       .replace(/^\s*#{1,6}\s*/, "")
+      .replace(/^\s*[\["]+/, "")
+      .replace(/[\]"]+$/g, "")
       .replace(/\*\*([^*\n]+?)\*\*/g, "$1")
       .replace(/__([^_\n]+?)__/g, "$1")
       .replace(/\*\*/g, "")

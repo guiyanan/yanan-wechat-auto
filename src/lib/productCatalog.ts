@@ -71,7 +71,7 @@ export function buildFallbackUnderstanding(product: Product): Product["understan
   const coreFunctions = product.description
     .split(/[，,、；;。\n]/)
     .map((item) => item.trim())
-    .filter(Boolean)
+    .filter((item) => item && !isNonCapabilityText(item))
     .slice(0, 4)
     .map((text) => ({
       text,
@@ -138,6 +138,16 @@ export function buildFallbackUnderstanding(product: Product): Product["understan
     generatedAt: new Date().toISOString(),
     source: "fallback",
   };
+}
+
+function isNonCapabilityText(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    /^https?:\/\//i.test(trimmed) ||
+    /^www\./i.test(trimmed) ||
+    /^官网链接[:：]/.test(trimmed) ||
+    /请手动补充/.test(trimmed)
+  );
 }
 
 function formatUnderstandingEntries(
@@ -210,6 +220,16 @@ function screenshotMediaNotes(notes: string | undefined): string {
     .join("\n");
 }
 
+function manualPriorityFacts(source: ProductSourcePack): string {
+  const notes = source.productNotes?.trim();
+  if (!notes) return "";
+  return [
+    "人工重点/用户强调：",
+    notes,
+    "写作要求：以上内容优先作为文章主线;如果它和产品定义或功能列表存在侧重差异,优先围绕人工重点展开,不要只写成泛泛的功能介绍。",
+  ].join("\n");
+}
+
 export function buildUnifiedArticleMaterialPack(product: Product): string {
   const source = product.sourcePack ?? {};
   const understanding = product.understanding;
@@ -229,6 +249,7 @@ export function buildUnifiedArticleMaterialPack(product: Product): string {
     product.description ? `产品简介：${product.description}` : "",
     product.website ? `官网链接：${product.website}` : "",
     product.appUrl ? `产品前端/演示页面：${product.appUrl}` : "",
+    understanding ? manualPriorityFacts(source) : "",
     understanding?.definition ? `产品定义：${understanding.definition}` : "",
     understanding
       ? formatExplicitEntries("目标客户/角色", understanding.targetCustomers)

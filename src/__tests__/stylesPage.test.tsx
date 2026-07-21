@@ -91,4 +91,38 @@ describe("StylesPage", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByText("学习风格")).toBeInTheDocument();
   });
+
+  it("shows the client-facing selectable nine-style panel", () => {
+    render(<StylesPage />);
+
+    expect(screen.getByText("选择一类公众号表达方式")).toBeInTheDocument();
+    [
+      "JOTO 风格",
+      "卡兹克风格",
+      "苹果风格",
+      "随笔风格",
+      "小米风格",
+      "少数派风格",
+      "36氪风格",
+      "虎嗅风格",
+      "清单风格",
+    ].forEach((name) => {
+      expect(screen.getByRole("button", { name: `选择风格：${name}` }))
+        .toBeInTheDocument();
+    });
+    expect(screen.getByText("当前选中")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "选择风格：JOTO 风格" }))
+      .toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("lets the user choose a presentation style card", () => {
+    render(<StylesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "选择风格：少数派风格" }));
+
+    expect(screen.getByRole("button", { name: "选择风格：JOTO 风格" }))
+      .toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "选择风格：少数派风格" }))
+      .toHaveAttribute("aria-pressed", "true");
+  });
 });

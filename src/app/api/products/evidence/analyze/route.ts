@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Product, ProductSourceMediaAsset } from "@/types";
-import { createQwenClient } from "@/lib/qwen";
+import { createQwenClient, type QwenClientOptions } from "@/lib/qwen";
 import { getDeepSeekVisionOptions } from "@/lib/deepseek";
 
 export const runtime = "nodejs";
@@ -19,6 +19,10 @@ const EXT_TO_MIME: Record<string, string> = {
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
 };
+
+interface VisionOptions extends QwenClientOptions {
+  model: string;
+}
 
 export async function POST(req: NextRequest) {
   let body: AnalyzeRequest;
@@ -48,11 +52,11 @@ export async function POST(req: NextRequest) {
     const mime = EXT_TO_MIME[ext] ?? "image/png";
     const bytes = await readFile(absolutePath);
     const dataUrl = `data:${mime};base64,${bytes.toString("base64")}`;
-    const deepSeekOptions = getDeepSeekVisionOptions();
-    const client = createQwenClient(deepSeekOptions);
+    const visionOptions = getEvidenceVisionOptions();
+    const client = createQwenClient(visionOptions);
     const res = await client.chat.completions.create(
       {
-        model: deepSeekOptions.model,
+        model: visionOptions.model,
         temperature: 0.2,
         max_tokens: 700,
         messages: [
@@ -95,6 +99,23 @@ export async function POST(req: NextRequest) {
       reason,
     });
   }
+}
+
+function getEvidenceVisionOptions(): VisionOptions {
+  const explicitDeepSeekVisionModel = process.env.DEEPSEEK_MODEL_VISION?.trim();
+  if (explicitDeepSeekVisionModel) {
+    return getDeepSeekVisionOptions();
+  }
+
+  return {
+    model:
+      process.env.QWEN_MODEL_VISION?.trim() ||
+      process.env.DASHSCOPE_MODEL_VISION?.trim() ||
+      "qwen-vl-plus",
+    apiKey: process.env.DASHSCOPE_API_KEY,
+    apiKeyEnvName: "DASHSCOPE_API_KEY",
+    baseURL: process.env.DASHSCOPE_BASE_URL?.trim(),
+  };
 }
 
 function localPublicPath(publicUrl: string): string {

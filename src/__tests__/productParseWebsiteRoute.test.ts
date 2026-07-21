@@ -152,4 +152,48 @@ describe("/api/products/parse-website", () => {
     expect(json.notes).toContain("自然语言对话完成网络设备配置");
     expect(json.notes).toContain("AI 驱动的 NetOps 网络运维平台");
   });
+
+  it("extracts product copy from same-origin SPA JavaScript bundles", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/landing-assets/index.js")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => `
+            const copy = {
+              heroTitle: "Noteflow 是隐私优先的 AI 知识管理平台",
+              heroBody: "支持本地部署、团队协作笔记、会议实时录音、文档智能问答、PDF 智能阅读和 AI 笔记整理。",
+              feature: "开会时其他同事可以看到实时录音,上传建议并反馈给会议现场同事,减少会后同步成本。",
+              className: "flex items-center justify-between text-primary-green"
+            };
+          `,
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () => `
+          <html>
+            <head>
+              <title>Noteflow - 隐私优先的 AI 知识管理平台</title>
+              <meta name="description" content="Noteflow 是 JOTO.AI 旗下 AI 知识管理平台。">
+              <script type="module" crossorigin src="/landing-assets/index.js"></script>
+            </head>
+            <body><div id="root"></div></body>
+          </html>`,
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST(req({ url: "https://note.jotoai.com/" }) as never);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.quality).toBe("rich");
+    expect(json.notes).toContain("前端脚本文案");
+    expect(json.notes).toContain("会议实时录音");
+    expect(json.notes).toContain("上传建议并反馈给会议现场同事");
+    expect(json.notes).not.toContain("flex items-center");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

@@ -33,12 +33,24 @@ describe("productCatalog", () => {
     });
   });
 
+  it("does not treat a product URL as a fallback core function", () => {
+    const understanding = buildFallbackUnderstanding(
+      product({
+        description: "https://note.jotoai.com/",
+        tags: [],
+      })
+    );
+
+    expect(understanding?.coreFunctions).toEqual([]);
+    expect(understanding?.definition).toContain("https://note.jotoai.com/");
+  });
+
   it("turns product library materials into article source context", () => {
     const context = productSourceToArticleContext(
       product({
         website: "https://joto.ai",
         sourcePack: {
-          productNotes: "旧 productNotes 不应绕过 V2 产品卡进入正文",
+          productNotes: "用户强调的人工重点应进入 V2 产品卡",
           competitorNotes: "旧 competitorNotes 不应进入正文",
           trendNotes: "旧 trendNotes 不应进入正文",
           imageRefs: "旧 imageRefs 不应进入正文",
@@ -104,6 +116,9 @@ describe("productCatalog", () => {
 
     expect(context.productNotes).toContain("【产品卡 V2 / 可写事实】");
     expect(context.productNotes).toContain("官网链接：https://joto.ai");
+    expect(context.productNotes).toContain("人工重点/用户强调");
+    expect(context.productNotes).toContain("用户强调的人工重点应进入 V2 产品卡");
+    expect(context.productNotes).toContain("以上内容优先作为文章主线");
     expect(context.productNotes).toContain("产品定义：这是一款企业自动化产品。");
     expect(context.productNotes).toContain("核心功能：流程编排");
     expect(context.productNotes).toContain("【产品卡 V2 / 可推导表达】");
@@ -113,7 +128,6 @@ describe("productCatalog", () => {
     expect(context.productNotes).toContain("【产品卡 V2 / 资料缺口】");
     expect(context.productNotes).toContain("是否有客户案例?");
     expect(context.productNotes).not.toContain("旧版补充素材");
-    expect(context.productNotes).not.toContain("旧 productNotes");
     expect(context.productNotes).not.toContain("旧 competitorNotes");
     expect(context.productNotes).not.toContain("旧 trendNotes");
     expect(context.productNotes).not.toContain("旧 imageRefs");
@@ -124,6 +138,39 @@ describe("productCatalog", () => {
     expect(context).not.toHaveProperty("competitorNotes");
     expect(context).not.toHaveProperty("trendNotes");
     expect(context).not.toHaveProperty("imageRefs");
+  });
+
+  it("keeps manual Noteflow meeting emphasis visible even when V2 understanding exists", () => {
+    const context = productSourceToArticleContext(
+      product({
+        name: "noteflow",
+        sourcePack: {
+          productNotes:
+            "最重要的几个地方：\n1.团队协作笔记本，可以共享实时会议内容并给出 advice\n2.团队笔记本可以做到一个公司的人在几个不同的地方，同时参加会议，并且实时给出会议内容提议以及建议",
+        },
+        understanding: {
+          definition: "noteflow：本地部署、文档智能问答、AI 笔记整理、思维导图生成",
+          targetCustomers: [],
+          coreFunctions: [
+            { text: "会议实时录音", confidence: "explicit", basis: "人工备注" },
+            { text: "协作编辑", confidence: "explicit", basis: "人工备注" },
+          ],
+          painPoints: [],
+          traditionalAlternatives: [],
+          afterUseChanges: [],
+          evidence: [],
+          writingBoundaries: ["不得编造客户案例。"],
+          questionsToAsk: [],
+          generatedAt: "2026-06-26T00:00:00.000Z",
+          source: "fallback",
+        },
+      })
+    );
+
+    expect(context.productNotes).toContain("人工重点/用户强调");
+    expect(context.productNotes).toContain("共享实时会议内容");
+    expect(context.productNotes).toContain("实时给出会议内容提议以及建议");
+    expect(context.productNotes).toContain("优先围绕人工重点展开");
   });
 
   it("uses uploaded screenshot notes as product material and ignores video notes", () => {

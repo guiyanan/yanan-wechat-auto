@@ -104,6 +104,13 @@ function appendInstruction(instruction: string, rule: string): string {
   return instruction.includes(rule) ? instruction : `${instruction}\n${rule}`;
 }
 
+function isUsableModelInstruction(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const text = value.trim();
+  if (text.length < 30) return false;
+  return /产品|用户|痛点|传统|场景|能力|使用|变化|介入/.test(text);
+}
+
 function trendContextText(trends: TrendSearchResult[] = []): string {
   return trends
     .slice(0, 5)
@@ -293,12 +300,19 @@ export function coerceTopicPlans(
     const row = input[idx] && typeof input[idx] === "object"
       ? (input[idx] as Record<string, unknown>)
       : {};
+    const modelInstruction = isUsableModelInstruction(row.promptInstruction)
+      ? appendInstruction(row.promptInstruction.trim(), PRODUCT_CHAIN_RULE)
+      : plan.promptInstruction;
     return {
       ...plan,
       reason:
         typeof row.reason === "string" && row.reason.trim()
           ? row.reason.trim()
           : plan.reason,
+      promptInstruction: appendInstruction(
+        appendInstruction(modelInstruction, NO_FICTIONAL_PERSON_RULE),
+        PRODUCT_CHAIN_RULE
+      ),
     };
   });
 }

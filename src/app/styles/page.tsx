@@ -7,7 +7,25 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
-import { FileText, Loader2, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import {
+  BookOpen,
+  BriefcaseBusiness,
+  ChartNoAxesCombined,
+  Check,
+  ClipboardCheck,
+  Compass,
+  Eye,
+  FileText,
+  Layers3,
+  Loader2,
+  MessageSquareText,
+  Plus,
+  Save,
+  Target,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { TopNav } from "@/components/nav/TopNav";
 import { buildPromptProfileFromStyle } from "@/lib/learnedStyles";
@@ -17,6 +35,126 @@ import {
 } from "@/lib/styleHtmlDocuments";
 import { useLearnedStyleStore } from "@/store/learnedStyleStore";
 import type { LearnedWritingStyle, LearnedWritingStyleScope } from "@/types";
+
+const PRESENTATION_STYLES = [
+  {
+    id: "scene-observation",
+    name: "JOTO 风格",
+    intent: "从一个具体工作卡点切入,让读者先看到自己的处境。",
+    bestFor: "产品种草 / 需求教育",
+    title: "标题像一个正在发生的问题",
+    opening: "先写人、动作和阻塞点,再引出产品判断。",
+    rhythm: "短段落推进,每段只拆一个麻烦。",
+    accent: "bg-blue-600",
+    tint: "bg-blue-50",
+    text: "text-blue-700",
+    icon: Eye,
+  },
+  {
+    id: "data-judgement",
+    name: "卡兹克风格",
+    intent: "用事实、对比和推理建立可信度,少煽情。",
+    bestFor: "B 端决策 / 专业汇报",
+    title: "标题强调变量、代价或选择标准",
+    opening: "先摆观察结果,再解释为什么这个变化重要。",
+    rhythm: "结论先行,证据跟进,最后落到选择理由。",
+    accent: "bg-emerald-600",
+    tint: "bg-emerald-50",
+    text: "text-emerald-700",
+    icon: ChartNoAxesCombined,
+  },
+  {
+    id: "industry-trend",
+    name: "苹果风格",
+    intent: "把产品放进更大的行业变化里,但不空喊趋势。",
+    bestFor: "品牌背书 / 热点承接",
+    title: "标题呈现行业正在发生的转向",
+    opening: "先写行业现象,再指出旧流程为什么撑不住。",
+    rhythm: "现象、原因、影响、产品入口四段式。",
+    accent: "bg-cyan-600",
+    tint: "bg-cyan-50",
+    text: "text-cyan-700",
+    icon: Compass,
+  },
+  {
+    id: "founder-note",
+    name: "随笔风格",
+    intent: "用产品团队视角解释取舍,显得真诚而不销售。",
+    bestFor: "公众号长期经营",
+    title: "标题像一次内部观察或阶段复盘",
+    opening: "从团队最近反复遇到的一件小事写起。",
+    rhythm: "克制叙述,少口号,多解释为什么这样做。",
+    accent: "bg-slate-800",
+    tint: "bg-slate-100",
+    text: "text-slate-700",
+    icon: BookOpen,
+  },
+  {
+    id: "customer-review",
+    name: "小米风格",
+    intent: "围绕一个匿名客户流程,写清前后变化。",
+    bestFor: "案例包装 / 销售材料",
+    title: "标题突出一个业务环节的前后差异",
+    opening: "先写客户原来的流程,不急着夸产品。",
+    rhythm: "旧做法、卡点、介入、变化、可复用经验。",
+    accent: "bg-amber-500",
+    tint: "bg-amber-50",
+    text: "text-amber-700",
+    icon: BriefcaseBusiness,
+  },
+  {
+    id: "tool-review",
+    name: "少数派风格",
+    intent: "像编辑测工具一样拆能力,避免变成产品说明书。",
+    bestFor: "竞品对比 / 功能教育",
+    title: "标题围绕试用感受或判断标准",
+    opening: "先交代测试任务,再写实际体验和边界。",
+    rhythm: "任务、表现、限制、适用人群、结论。",
+    accent: "bg-indigo-600",
+    tint: "bg-indigo-50",
+    text: "text-indigo-700",
+    icon: ClipboardCheck,
+  },
+  {
+    id: "expert-explain",
+    name: "36氪风格",
+    intent: "把复杂产品讲成清楚的方法论,更适合高客单价客户。",
+    bestFor: "方案型产品 / 知识型服务",
+    title: "标题直接点出一个误区或关键判断",
+    opening: "先定义问题,再拆解背后的工作机制。",
+    rhythm: "概念少、结构清楚,每节回答一个为什么。",
+    accent: "bg-teal-600",
+    tint: "bg-teal-50",
+    text: "text-teal-700",
+    icon: Layers3,
+  },
+  {
+    id: "opinion-commentary",
+    name: "虎嗅风格",
+    intent: "对一个行业现象给出鲜明判断,适合热点转产品。",
+    bestFor: "热点文章 / 认知占位",
+    title: "标题带判断,但不靠情绪吓人",
+    opening: "先承认现象,再提出一个反直觉看法。",
+    rhythm: "观点、例子、反面误区、产品提供的解法。",
+    accent: "bg-rose-600",
+    tint: "bg-rose-50",
+    text: "text-rose-700",
+    icon: MessageSquareText,
+  },
+  {
+    id: "landing-checklist",
+    name: "清单风格",
+    intent: "把产品价值变成可执行步骤,客户最容易转发给团队。",
+    bestFor: "转化页 / 会后跟进",
+    title: "标题承诺一个清晰可用的行动框架",
+    opening: "先写目标,再列出判断标准和执行顺序。",
+    rhythm: "少形容词,多动词,每段对应一个动作。",
+    accent: "bg-orange-500",
+    tint: "bg-orange-50",
+    text: "text-orange-700",
+    icon: Target,
+  },
+];
 
 export default function StylesPage() {
   const styles = useLearnedStyleStore((s) => s.styles);
@@ -37,8 +175,13 @@ export default function StylesPage() {
   const [savingPromptIds, setSavingPromptIds] = useState<
     Record<string, boolean>
   >({});
+  const [selectedPresentationStyleId, setSelectedPresentationStyleId] =
+    useState(PRESENTATION_STYLES[0].id);
   const [activeScope, setActiveScope] =
     useState<LearnedWritingStyleScope>("product");
+  const selectedPresentationStyle =
+    PRESENTATION_STYLES.find((style) => style.id === selectedPresentationStyleId) ??
+    PRESENTATION_STYLES[0];
   const visibleStyles = useMemo(
     () =>
       styles.filter((style) => (style.scope ?? "product") === activeScope),
@@ -225,7 +368,7 @@ export default function StylesPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <TopNav />
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-8">
         <header>
           <p className="text-xs font-medium text-blue-600">JOTO小信</p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">
@@ -235,6 +378,101 @@ export default function StylesPage() {
             粘贴文章或链接后,小信会反推出一段可编辑的固定提示词。后续批量生成会从对应风格库里轮换抽取提示词。
           </p>
         </header>
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-semibold text-blue-600">
+                可选写作风格
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                选择一类公众号表达方式
+              </h2>
+            </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+              <div className="text-xs font-medium text-blue-500">当前选中</div>
+              <div className="mt-1 text-base font-semibold text-blue-800">
+                {selectedPresentationStyle.name}
+              </div>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {PRESENTATION_STYLES.map((style, index) => {
+              const Icon = style.icon;
+              const selected = selectedPresentationStyleId === style.id;
+              return (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => setSelectedPresentationStyleId(style.id)}
+                  aria-pressed={selected}
+                  aria-label={`选择风格：${style.name}`}
+                  className={`group rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md ${
+                    selected
+                      ? "border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-100"
+                      : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        selected ? "bg-blue-600 text-white" : `${style.tint} ${style.text}`
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        selected
+                          ? "bg-blue-600 text-white"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {selected ? <Check className="h-3 w-3" /> : null}
+                      {selected ? "已选" : String(index + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-slate-950">
+                    {style.name}
+                  </h3>
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">
+                    {style.intent}
+                  </p>
+                  <div className="mt-4 space-y-2 text-xs leading-5 text-slate-500">
+                    <p>
+                      <span className={`font-semibold ${style.text}`}>适合：</span>
+                      {style.bestFor}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-slate-700">标题：</span>
+                      {style.title}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-slate-700">开头：</span>
+                      {style.opening}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-slate-700">节奏：</span>
+                      {style.rhythm}
+                    </p>
+                  </div>
+                  <div
+                    className={`mt-4 flex h-9 items-center justify-center rounded-lg border text-xs font-semibold ${
+                      selected
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-200 bg-slate-50 text-slate-500 group-hover:border-blue-200 group-hover:bg-white group-hover:text-blue-700"
+                    }`}
+                  >
+                    {selected ? "已选择此风格" : "选择此风格"}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+            客户可以先选风格,再进入范文学习。系统会把选定风格沉淀成可编辑提示词,用于产品文章、热点观察和行业稿。
+          </div>
+        </section>
 
         <div className="mt-6 inline-flex rounded-xl bg-slate-100 p-1 text-sm font-medium text-slate-600">
           {[

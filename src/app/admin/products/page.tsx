@@ -188,6 +188,21 @@ function understandingFingerprint(product: Product): string {
       asset.caption,
       asset.analysis,
     ]),
+    understanding: product.understanding
+      ? {
+          source: product.understanding.source,
+          definition: product.understanding.definition,
+          coreFunctions: entriesToText(product.understanding.coreFunctions),
+          targetCustomers: entriesToText(product.understanding.targetCustomers),
+          painPoints: entriesToText(product.understanding.painPoints),
+          traditionalAlternatives: entriesToText(
+            product.understanding.traditionalAlternatives
+          ),
+          afterUseChanges: entriesToText(product.understanding.afterUseChanges),
+          evidence: evidenceToText(product.understanding.evidence),
+          writingBoundaries: stringsToText(product.understanding.writingBoundaries),
+        }
+      : undefined,
     docs: product.knowledgeDocs.map((doc) => [
       doc.fileName,
       doc.sizeKb,

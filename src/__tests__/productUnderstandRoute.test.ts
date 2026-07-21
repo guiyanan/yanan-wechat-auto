@@ -223,6 +223,199 @@ describe("/api/products/understand", () => {
     expect(json.understanding.coreFunctions.length).toBeGreaterThanOrEqual(4);
   });
 
+  it("rejects sparse cards when manual product notes already describe the workflow", async () => {
+    completeChatMock.mockResolvedValueOnce(
+      JSON.stringify({
+        definition: "广告审查助手：一张广告图 几十条合规规则 靠人眼一行行扫",
+        coreFunctions: [],
+        targetCustomers: [],
+        painPoints: [],
+        traditionalAlternatives: [],
+        afterUseChanges: [],
+        evidence: [],
+        writingBoundaries: [],
+        questionsToAsk: [],
+      })
+    );
+
+    const manualNotes = [
+      "一张广告图 几十条合规规则 靠人眼一行行扫",
+      "一张图审一小时",
+      "赶上投放旺季 合规团队根本审不过来",
+      "广告审查助手 上传图片 自动出结果",
+      "上传广告长图 点击开始检测",
+    ].join("\n");
+    const extraNotes = [
+      "直接定位到出问题的那一行",
+      "一张图 几十条规则 5分钟审完",
+      "不用截图 不用画框 不用写批注",
+      "一份带定位 带建议的审查报告直接交出去",
+      "让合规审查从小时级变成分钟级",
+    ].join("\n");
+
+    const res = await POST(
+      req({
+        product: {
+          id: "prod-ad-review",
+          name: "广告审查助手",
+          description: "",
+          tags: [],
+          iconGradient: ["#1268FF", "#5B8CFF"],
+          knowledgeDocs: [],
+          sourcePack: {
+            websiteNotes: manualNotes,
+            productNotes: extraNotes,
+          },
+        },
+      }) as never
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.reason).toContain("产品理解卡内容太少");
+    expect(json.understanding.source).toBe("fallback");
+    expect(json.understanding.definition).toContain("广告投放");
+    expect(json.understanding.coreFunctions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining("广告审查") }),
+        expect.objectContaining({ text: expect.stringContaining("自动出结果") }),
+      ])
+    );
+    expect(json.understanding.painPoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining("人工逐条核对") }),
+      ])
+    );
+    expect(json.understanding.traditionalAlternatives).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining("人工逐条比对") }),
+      ])
+    );
+    expect(json.understanding.afterUseChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining("自动检测") }),
+        expect.objectContaining({ text: expect.stringContaining("审查结果") }),
+      ])
+    );
+  });
+
+  it("uses manually edited understanding as source material when product notes are empty", async () => {
+    completeChatMock.mockRejectedValueOnce(new Error("model unavailable"));
+
+    const res = await POST(
+      req({
+        product: {
+          id: "prod-noteflow",
+          name: "noteflow",
+          description:
+            "Noteflow 是 JOTO.AI 旗下隐私优先的 AI 知识管理平台,支持本地部署、文档智能问答、PDF 阅读、AI 笔记整理、思维导图生成。",
+          tags: [],
+          iconGradient: ["#1268FF", "#5B8CFF"],
+          knowledgeDocs: [],
+          sourcePack: {
+            websiteNotes:
+              "官网资料写到 Noteflow 支持本地部署、文档智能问答、PDF 阅读、AI 笔记整理、思维导图生成。",
+            productNotes: "",
+          },
+          understanding: {
+            definition:
+              "noteflow：本地部署、文档智能问答、AI 笔记整理、思维导图生成，可以团队协作笔记，一个人在其他企业开会的时候，其他人打开 note 可以看到会议实时录音，并及时上传建议以及反馈给会议上的同事，可以做到协作编辑。",
+            coreFunctions: [],
+            targetCustomers: [
+              {
+                text: "企业知识管理团队",
+                confidence: "inferred",
+                basis: "人工编辑",
+              },
+            ],
+            painPoints: [],
+            traditionalAlternatives: [
+              {
+                text: "NotebookLM 等通用知识问答工具",
+                confidence: "inferred",
+                basis: "人工编辑",
+              },
+            ],
+            afterUseChanges: [],
+            evidence: [],
+            writingBoundaries: [],
+            questionsToAsk: [],
+            generatedAt: "2026-06-24T00:00:00.000Z",
+            source: "manual",
+          },
+        },
+      }) as never
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.understanding.source).toBe("fallback");
+    expect(json.understanding.coreFunctions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: "会议实时录音" }),
+        expect.objectContaining({ text: "协作编辑" }),
+      ])
+    );
+    expect(json.understanding.painPoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining("会议信息") }),
+      ])
+    );
+    expect(json.understanding.afterUseChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining("会议现场信息") }),
+      ])
+    );
+  });
+
+  it("does not accept product URLs as core function entries", async () => {
+    completeChatMock.mockResolvedValueOnce(
+      JSON.stringify({
+        definition: "JOTO Note 是一个产品页面。",
+        coreFunctions: [
+          {
+            text: "https://note.jotoai.com/",
+            confidence: "explicit",
+            basis: "Landing Page",
+          },
+        ],
+        targetCustomers: [],
+        painPoints: [],
+        traditionalAlternatives: [],
+        afterUseChanges: [],
+        evidence: [],
+        writingBoundaries: [],
+        questionsToAsk: [],
+      })
+    );
+
+    const res = await POST(
+      req({
+        product: {
+          id: "prod-note",
+          name: "JOTO Note",
+          description: "",
+          website: "https://note.jotoai.com/",
+          tags: [],
+          iconGradient: ["#1268FF", "#5B8CFF"],
+          knowledgeDocs: [],
+          sourcePack: {
+            websiteNotes:
+              "JOTO Note 是面向团队的笔记和知识整理工具。核心能力包括记录资料、整理知识、沉淀工作笔记和复用内容。",
+          },
+        },
+      }) as never
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.understanding.coreFunctions).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: "https://note.jotoai.com/" }),
+      ])
+    );
+  });
+
   it("returns a product understanding card", async () => {
     process.env.DEEPSEEK_API_KEY = "sk-deepseek-test";
     const res = await POST(
@@ -289,6 +482,48 @@ describe("/api/products/understand", () => {
     expect(userPrompt).toContain("典型场景");
     expect(userPrompt).toContain("主流替代方案");
     expect(userPrompt).toContain("再把资料库映射为 V2 字段");
+    delete process.env.DEEPSEEK_API_KEY;
+  });
+
+  it("passes manually edited understanding into the model prompt", async () => {
+    process.env.DEEPSEEK_API_KEY = "sk-deepseek-test";
+    await POST(
+      req({
+        product: {
+          id: "prod-noteflow",
+          name: "noteflow",
+          description: "隐私优先的 AI 知识管理平台",
+          tags: [],
+          iconGradient: ["#1268FF", "#5B8CFF"],
+          knowledgeDocs: [],
+          sourcePack: {
+            websiteNotes: "官网写到文档智能问答和 PDF 阅读。",
+            productNotes: "",
+          },
+          understanding: {
+            definition:
+              "可以团队协作笔记,会议实时录音,并及时上传建议以及反馈给会议上的同事。",
+            coreFunctions: [],
+            targetCustomers: [],
+            painPoints: [],
+            traditionalAlternatives: [],
+            afterUseChanges: [],
+            evidence: [],
+            writingBoundaries: [],
+            questionsToAsk: [],
+            generatedAt: "2026-06-24T00:00:00.000Z",
+            source: "manual",
+          },
+        },
+      }) as never
+    );
+
+    const call = completeChatMock.mock.calls[0][0] as {
+      messages: Array<{ content: string }>;
+    };
+    expect(call.messages[1].content).toContain("【已人工编辑的产品理解】");
+    expect(call.messages[1].content).toContain("会议实时录音");
+    expect(call.messages[1].content).toContain("上传建议");
     delete process.env.DEEPSEEK_API_KEY;
   });
 

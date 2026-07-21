@@ -151,6 +151,27 @@ describe("topicPlanner", () => {
     ]);
   });
 
+  it("keeps useful model instructions so manual product emphasis can drive the article", () => {
+    const plans = coerceTopicPlans(
+      [
+        {
+          id: "free-1",
+          angleLabel: "共享会议入口",
+          angleType: "scenario",
+          reason: "用户人工重点写到团队协作笔记和共享实时会议。",
+          promptInstruction:
+            "入口固定为场景痛点。围绕 Noteflow 的团队协作笔记、共享实时会议内容、会中给出建议展开,再讲产品是什么、用户痛点、传统做法、产品介入和使用后的变化。",
+        },
+      ],
+      product({ name: "noteflow" })
+    );
+
+    expect(plans[0].angleLabel).toBe("场景痛点入口");
+    expect(plans[0].promptInstruction).toContain("共享实时会议内容");
+    expect(plans[0].promptInstruction).toContain("会中给出建议");
+    expect(plans[0].promptInstruction).toContain("每篇都必须完整覆盖产品链路");
+  });
+
   it("fallback topic instructions avoid fictional named-character stories", () => {
     const plans = buildFallbackTopicPlans(product({ name: "普通产品" }), {
       angleStrategy: "scenario",

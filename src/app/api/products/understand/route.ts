@@ -38,6 +38,29 @@ const KNOWN_CORE_FUNCTIONS = [
   "数据分析",
   "评论分析",
   "客户反馈",
+  "广告审查",
+  "广告审核",
+  "图片上传",
+  "自动检测",
+  "自动出结果",
+  "开始检测",
+  "合规检测",
+  "规则扫描",
+  "风险定位",
+  "审查报告",
+  "审核报告",
+  "本地部署",
+  "团队协作笔记",
+  "会议实时录音",
+  "协作编辑",
+  "建议反馈",
+  "文档智能问答",
+  "PDF 阅读",
+  "PDF智能阅读",
+  "AI 笔记整理",
+  "思维导图生成",
+  "知识库协作共享",
+  "文档AI摘要",
 ];
 
 const KNOWN_TARGET_CUSTOMERS = [
@@ -56,6 +79,17 @@ const KNOWN_TARGET_CUSTOMERS = [
   "IT 团队",
   "网络工程师",
   "SRE 团队",
+  "投放团队",
+  "合规团队",
+  "广告审核人员",
+  "广告投放负责人",
+  "品牌方",
+  "电商运营",
+  "知识工作者",
+  "个人知识工作者",
+  "企业知识管理团队",
+  "会议参与者",
+  "团队成员",
 ];
 
 const KNOWN_PAIN_PATTERNS = [
@@ -67,6 +101,14 @@ const KNOWN_PAIN_PATTERNS = [
   { match: ["散落", "群聊"], text: "资料散落在文件和沟通渠道中,交付信息不集中" },
   { match: ["打样", "等待"], text: "依赖线下打样或等待反馈,试错成本较高" },
   { match: ["库存风险"], text: "选款缺少数据支撑时容易带来库存风险" },
+  { match: ["人眼", "一行行扫"], text: "人工逐条核对广告规则,耗时且容易漏掉问题" },
+  { match: ["一小时", "合规团队根本审不过来"], text: "投放高峰期素材审查压力大,人工审核速度跟不上" },
+  { match: ["截图", "画框", "写批注"], text: "传统审查需要截图、圈注和补充说明,交付链路碎片化" },
+  { match: ["投放旺季", "合规"], text: "广告投放节奏快,合规风险需要更早被定位" },
+  { match: ["会议实时录音", "开会", "会议"], text: "会议信息容易停留在现场或个人记录里,会外同事难以及时获得上下文" },
+  { match: ["协作编辑", "上传建议", "反馈"], text: "跨成员协作时建议和反馈需要及时同步,否则容易错过会议现场决策" },
+  { match: ["知识管理", "第二大脑", "知识库"], text: "知识资料沉在文档和个人笔记里,团队复用和追溯成本高" },
+  { match: ["本地部署", "隐私"], text: "企业知识资料涉及隐私和权限,不能轻易交给不可控的外部工具处理" },
 ];
 
 const KNOWN_ALTERNATIVES = [
@@ -76,6 +118,13 @@ const KNOWN_ALTERNATIVES = [
   { match: ["Excel", "手工填写"], text: "用 Excel 或文档手工整理版单和交付信息" },
   { match: ["外包", "摄影", "修图"], text: "依赖外包摄影、修图或人工制作营销物料" },
   { match: ["凭经验", "经验判断"], text: "靠经验做趋势判断和选款决策" },
+  { match: ["人眼", "一行行扫"], text: "靠审核人员人工逐条比对广告合规规则" },
+  { match: ["截图", "画框", "写批注"], text: "用截图、画框和文字批注手动整理审查意见" },
+  { match: ["合规团队", "审不过来"], text: "依赖合规团队排队人工审核广告素材" },
+  { match: ["NotebookLM", "noteboollm", "NotebookLm"], text: "用 NotebookLM 等通用知识问答工具替代" },
+  { match: ["手工会议纪要", "会议实时录音", "开会"], text: "靠人工会议纪要和会后同步整理信息" },
+  { match: ["协作编辑", "团队协作笔记"], text: "用飞书、Notion、语雀或共享文档手动协作整理笔记" },
+  { match: ["PDF 阅读", "文档智能问答"], text: "靠人工阅读 PDF、搜索文档和手动摘录重点" },
 ];
 
 const KNOWN_AFTER_USE_CHANGES = [
@@ -87,6 +136,15 @@ const KNOWN_AFTER_USE_CHANGES = [
   { match: ["知识库", "精准调用"], text: "生成过程可以受行业知识、版型规范或品牌偏好约束" },
   { match: ["自动化", "Agent"], text: "重复操作可以交给自动化能力或 Agent 处理" },
   { match: ["数据分析", "评论分析"], text: "用户反馈可以被集中分析,用于定位问题和优化方向" },
+  { match: ["上传图片", "自动出结果"], text: "上传广告素材后可以自动检测并输出审查结果" },
+  { match: ["直接定位到出问题的那一行"], text: "问题能被定位到具体风险点,减少人工逐行查找" },
+  { match: ["5分钟审完", "分钟级"], text: "广告素材审查可以从小时级缩短到分钟级" },
+  { match: ["审查报告", "直接交出去"], text: "审查结果可以整理成带定位和建议的报告交付" },
+  { match: ["不用截图", "不用画框", "不用写批注"], text: "审查过程减少截图、圈注和手工说明等重复动作" },
+  { match: ["文档智能问答", "PDF 阅读", "PDF智能阅读"], text: "文档和 PDF 资料可以通过智能问答快速定位重点" },
+  { match: ["AI 笔记整理", "思维导图生成"], text: "笔记和资料可以被整理成更容易复用的结构化知识" },
+  { match: ["会议实时录音", "协作编辑"], text: "会议现场信息、建议和反馈可以在团队协作笔记里同步沉淀" },
+  { match: ["本地部署", "隐私"], text: "企业知识资料可以在更可控的部署和权限环境中使用 AI 能力" },
 ];
 
 interface UnderstandRequest {
@@ -107,6 +165,40 @@ function extractJsonObject(raw: string): unknown {
   }
 }
 
+function entryTexts(label: string, entries: ProductUnderstandingEntry[] | undefined) {
+  const text = (entries ?? [])
+    .map((entry) => entry.text?.trim())
+    .filter(Boolean)
+    .join("；");
+  return text ? `${label}：${text}` : "";
+}
+
+function manualUnderstandingText(product: Product): string {
+  const understanding = product.understanding;
+  if (!understanding || understanding.source !== "manual") return "";
+  return [
+    understanding.definition?.trim()
+      ? `产品定义：${understanding.definition.trim()}`
+      : "",
+    entryTexts("核心功能", understanding.coreFunctions),
+    entryTexts("目标客户/角色", understanding.targetCustomers),
+    entryTexts("用户痛点", understanding.painPoints),
+    entryTexts("传统做法/替代方案", understanding.traditionalAlternatives),
+    entryTexts("产品介入后的变化", understanding.afterUseChanges),
+    (understanding.evidence ?? [])
+      .map((item) => item.text?.trim())
+      .filter(Boolean)
+      .join("；")
+      ? `可用证据：${(understanding.evidence ?? [])
+          .map((item) => item.text?.trim())
+          .filter(Boolean)
+          .join("；")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function materialText(body: UnderstandRequest): string {
   return [
     body.product.sourcePack?.websiteNotes,
@@ -117,6 +209,7 @@ function materialText(body: UnderstandRequest): string {
     body.pdfText,
     body.mediaNotes,
     body.extraNotes,
+    manualUnderstandingText(body.product),
     body.product.description,
     ...(body.product.sourceMediaAssets ?? [])
       .filter((asset) => asset.fileType === "image")
@@ -139,6 +232,9 @@ function sourceLabelFor(body: UnderstandRequest): string {
   }
   if (body.extraNotes?.trim() || body.product.sourcePack?.productNotes?.trim()) {
     labels.push("人工补充");
+  }
+  if (manualUnderstandingText(body.product)) {
+    labels.push("人工修订");
   }
   return labels.join("、") || "产品资料";
 }
@@ -232,6 +328,18 @@ function normalizeForMatch(value: string): string {
 }
 
 function buildFallbackDefinition(product: Product, materialSentence: string): string {
+  const material = [
+    product.sourcePack?.productNotes,
+    product.sourcePack?.websiteNotes,
+    product.sourcePack?.mediaNotes,
+    manualUnderstandingText(product),
+    product.description,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  if (/广告审查|广告审核|合规|投放/.test(material)) {
+    return `${product.name} 是面向广告投放、运营和合规团队的广告审查工具,用于上传广告图片后自动检测合规风险,定位问题并整理可交付的审查建议或报告。`;
+  }
   if (!materialSentence) {
     return `${product.name} 是一款需要继续补充资料的产品。当前产品卡为系统根据已有资料生成的保守理解,所有不确定内容已标注为推测。`;
   }
@@ -260,7 +368,11 @@ function buildMaterialFallbackUnderstanding(
       mediaNotes: [product.sourcePack?.mediaNotes, body.mediaNotes]
         .filter(Boolean)
         .join("\n"),
-      productNotes: [product.sourcePack?.productNotes, body.extraNotes]
+      productNotes: [
+        product.sourcePack?.productNotes,
+        body.extraNotes,
+        manualUnderstandingText(product),
+      ]
         .filter(Boolean)
         .join("\n"),
     },
@@ -375,8 +487,20 @@ function asEntryArray(
       };
     })
     .filter((item): item is ProductUnderstandingEntry => Boolean(item))
+    .filter((item) => !isInvalidUnderstandingEntryText(item.text))
     .slice(0, 8);
   return entries.length ? entries : fallback;
+}
+
+function isInvalidUnderstandingEntryText(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    /^https?:\/\//i.test(trimmed) ||
+    /^www\./i.test(trimmed) ||
+    /^官网链接[:：]/.test(trimmed) ||
+    /^Landing Page[:：]/i.test(trimmed) ||
+    /请手动补充/.test(trimmed)
+  );
 }
 
 function normalizeEvidenceSource(
@@ -445,22 +569,27 @@ function coerceUnderstanding(input: unknown, product: Product): ProductUnderstan
 }
 
 function hasRichMaterial(body: UnderstandRequest): boolean {
-  const text = [
-    body.websiteNotes,
-    body.pdfText,
-    body.mediaNotes,
-    body.extraNotes,
-    body.product.description,
-  ]
-    .filter(Boolean)
-    .join("\n");
-  return text.length >= 600;
+  const text = materialText(body);
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 8);
+  const signalCount = [
+    /上传|输入|点击|检测|审查|审核|定位|生成|输出|交付/,
+    /用户|团队|负责人|运营|合规|设计师|工程师|产品经理/,
+    /不用|减少|替代|传统|人工|人眼|Excel|截图|画框|批注/,
+    /分钟|小时|天|周|旺季|成本|效率|风险/,
+    /报告|建议|结果|规则|素材|图片|流程/,
+  ].filter((pattern) => pattern.test(text)).length;
+
+  return text.length >= 260 || (lines.length >= 4 && signalCount >= 3);
 }
 
 function countUsefulEntries(entries: ProductUnderstandingEntry[]): number {
   return entries.filter(
     (entry) =>
       entry.text.trim() &&
+      !isInvalidUnderstandingEntryText(entry.text) &&
       !/需要(用户)?(进一步)?(补充|确认)|资料不足|无法确认/.test(entry.text)
   ).length;
 }
@@ -495,6 +624,7 @@ function buildPrompt(body: UnderstandRequest) {
     "你是 JOTO 内容工厂的产品资料分析助手。",
     "任务不是写公众号文章,而是帮助用户理解产品,形成后续写文章可用的产品卡 V2。",
     "只能基于用户给出的产品名、简介、官网备注、PDF 摘要和补充说明,不得编造客户、价格、数据或功能。",
+    "URL、官网链接、页面地址只能作为来源,绝不能填进 coreFunctions、targetCustomers、painPoints、traditionalAlternatives 或 afterUseChanges。",
     "你要区分资料明确写到的内容和根据材料推测的内容;推测必须标记为 inferred。",
     "如果官网或 PDF 已经提供大量产品模块,必须充分提取,不要只摘产品一句话简介。",
     "不得用「需要补充」「需要进一步确认」替代已有材料中已经写明的功能、场景、流程或变化。",
@@ -535,6 +665,9 @@ function buildPrompt(body: UnderstandRequest) {
     "",
     "【额外补充】",
     body.extraNotes?.trim() || "未提供",
+    "",
+    "【已人工编辑的产品理解】",
+    manualUnderstandingText(product) || "未提供",
     "",
     "请先整理一张产品内容资料库,但不要把资料库作为单独字段输出;你要在心里完成整理,再把结果映射为 V2 字段。",
     "资料库必须覆盖这些栏目:",

@@ -7,6 +7,9 @@ const WEBSITE_TEXT_CAPTURE_LIMIT = 24_000;
 const WEBSITE_NOTES_TEXT_LIMIT = 20_000;
 const MIN_RICH_WEBSITE_TEXT_LENGTH = 80;
 const MIN_RICH_WEBSITE_SIGNAL_COUNT = 3;
+const SCRIPT_ASSET_CAPTURE_LIMIT = 900_000;
+const SCRIPT_TEXT_CAPTURE_LIMIT = 18_000;
+const MAX_SCRIPT_ASSETS_TO_FETCH = 4;
 
 const PRODUCT_SIGNAL_PATTERNS = [
   /AI/gi,
@@ -92,6 +95,123 @@ function htmlToText(html: string): string {
     .replace(/\s+/g, " ")
     .trim()
   );
+}
+
+function resolveAssetUrl(baseUrl: string, rawSrc: string): string | null {
+  try {
+    const url = new URL(rawSrc, baseUrl);
+    const base = new URL(baseUrl);
+    if (url.origin !== base.origin) return null;
+    if (!/\.(?:js|mjs)(?:$|\?)/i.test(url.pathname + url.search)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function extractScriptAssetUrls(html: string, baseUrl: string): string[] {
+  const candidates = [
+    ...Array.from(html.matchAll(/<script[^>]+src=["']([^"']+)["'][^>]*>/gi)).map(
+      (match) => match[1]
+    ),
+    ...Array.from(
+      html.matchAll(
+        /<link[^>]+rel=["'][^"']*modulepreload[^"']*["'][^>]+href=["']([^"']+)["'][^>]*>/gi
+      )
+    ).map((match) => match[1]),
+  ];
+  return Array.from(
+    new Set(
+      candidates
+        .map((src) => resolveAssetUrl(baseUrl, src))
+        .filter((src): src is string => Boolean(src))
+    )
+  ).slice(0, MAX_SCRIPT_ASSETS_TO_FETCH);
+}
+
+function decodeJsStringLiteral(raw: string, quote: string): string {
+  try {
+    if (quote === "`") {
+      return raw
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "\r")
+        .replace(/\\t/g, "\t")
+        .replace(/\\`/g, "`");
+    }
+    return JSON.parse(`${quote}${raw}${quote}`) as string;
+  } catch {
+    return raw;
+  }
+}
+
+function isUsefulBundledString(text: string): boolean {
+  const value = decodeHtmlEntities(text)
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) =>
+      String.fromCharCode(parseInt(code, 16))
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+  if (value.length < 4 || value.length > 240) return false;
+  if (/^https?:\/\//i.test(value) || /^\/[A-Za-z0-9/_\-?.=&]+$/.test(value)) {
+    return false;
+  }
+  if (/^[A-Za-z0-9_.:-]+$/.test(value) && !PRODUCT_SIGNAL_PATTERNS.some((pattern) => {
+    pattern.lastIndex = 0;
+    return pattern.test(value);
+  })) {
+    return false;
+  }
+  if (/[#{}[\]<>=>]/.test(value) && !/[\u4e00-\u9fa5]/.test(value)) {
+    return false;
+  }
+  return /[\u4e00-\u9fa5]/.test(value) || PRODUCT_SIGNAL_PATTERNS.some((pattern) => {
+    pattern.lastIndex = 0;
+    return pattern.test(value);
+  });
+}
+
+function extractBundledPageText(script: string): string {
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  const stringPattern = /(["'`])((?:\\.|(?!\1)[\s\S]){3,260})\1/g;
+  for (const match of script.matchAll(stringPattern)) {
+    const text = decodeJsStringLiteral(match[2], match[1])
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!isUsefulBundledString(text) || seen.has(text)) continue;
+    seen.add(text);
+    parts.push(text);
+    if (parts.join(" ").length >= SCRIPT_TEXT_CAPTURE_LIMIT) break;
+  }
+  return parts.join("。");
+}
+
+async function extractScriptTextFromAssets(
+  html: string,
+  pageUrl: string,
+  signal: AbortSignal
+): Promise<string> {
+  const assetUrls = extractScriptAssetUrls(html, pageUrl);
+  const parts: string[] = [];
+  for (const assetUrl of assetUrls) {
+    try {
+      const res = await fetch(assetUrl, {
+        signal,
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (compatible; JOTOContentFactory/1.0; +https://joto.ai)",
+          accept: "application/javascript,text/javascript,*/*",
+        },
+      });
+      if (!res.ok) continue;
+      const script = (await res.text()).slice(0, SCRIPT_ASSET_CAPTURE_LIMIT);
+      const text = extractBundledPageText(script);
+      if (text) parts.push(text);
+    } catch {
+      // Script assets are an enhancement; metadata and static HTML remain usable.
+    }
+  }
+  return Array.from(new Set(parts)).join(" ");
 }
 
 function titleFromHtml(html: string): string {
@@ -187,9 +307,11 @@ function extractCoreClues(text: string): string[] {
 
 function websiteParseQuality(
   visibleText: string,
-  metadataText: string
+  metadataText: string,
+  scriptText = ""
 ): "rich" | "metadata" | "shallow" {
-  const text = [visibleText, metadataText].filter(Boolean).join(" ");
+  const bodyText = [visibleText, scriptText].filter(Boolean).join(" ");
+  const text = [bodyText, metadataText].filter(Boolean).join(" ");
   if (
     text.length < MIN_RICH_WEBSITE_TEXT_LENGTH ||
     countProductSignals(text) < MIN_RICH_WEBSITE_SIGNAL_COUNT
@@ -197,8 +319,8 @@ function websiteParseQuality(
     return "shallow";
   }
   if (
-    visibleText.length < MIN_RICH_WEBSITE_TEXT_LENGTH ||
-    countProductSignals(visibleText) < MIN_RICH_WEBSITE_SIGNAL_COUNT
+    bodyText.length < MIN_RICH_WEBSITE_TEXT_LENGTH ||
+    countProductSignals(bodyText) < MIN_RICH_WEBSITE_SIGNAL_COUNT
   ) {
     return "metadata";
   }
@@ -244,7 +366,14 @@ export async function POST(req: NextRequest) {
     const html = await res.text();
     const visibleText = htmlToText(html).slice(0, WEBSITE_TEXT_CAPTURE_LIMIT);
     const metadataText = buildMetadataText(html).slice(0, WEBSITE_TEXT_CAPTURE_LIMIT);
-    const text = [visibleText, metadataText]
+    const scriptText =
+      visibleText.length >= MIN_RICH_WEBSITE_TEXT_LENGTH
+        ? ""
+        : (await extractScriptTextFromAssets(html, url, controller.signal)).slice(
+            0,
+            SCRIPT_TEXT_CAPTURE_LIMIT
+          );
+    const text = [visibleText, scriptText, metadataText]
       .filter(Boolean)
       .join(" ")
       .slice(0, WEBSITE_TEXT_CAPTURE_LIMIT);
@@ -252,7 +381,7 @@ export async function POST(req: NextRequest) {
     const description =
       extractMeta(html, "description") || extractMeta(html, "og:description");
     const signalCount = countProductSignals(text);
-    const quality = websiteParseQuality(visibleText, metadataText);
+    const quality = websiteParseQuality(visibleText, metadataText, scriptText);
     const coreClues = extractCoreClues(text);
     if (text.length < 40 && !description) {
       return NextResponse.json(
@@ -290,6 +419,8 @@ export async function POST(req: NextRequest) {
       description ? `页面描述：${description}` : "",
       quality === "metadata"
         ? `页面解析质量：正文少,但解析到较完整 metadata,可读素材 ${text.length} 字，产品线索 ${signalCount} 个`
+        : scriptText && visibleText.length < MIN_RICH_WEBSITE_TEXT_LENGTH
+          ? `页面解析质量：前端脚本文案 ${text.length} 字，产品线索 ${signalCount} 个`
         : `页面解析质量：正文 ${text.length} 字，产品线索 ${signalCount} 个`,
       coreClues.length ? `页面核心线索：${coreClues.join(" / ")}` : "",
       text ? `页面可读文本片段：${text.slice(0, WEBSITE_NOTES_TEXT_LIMIT)}` : "",

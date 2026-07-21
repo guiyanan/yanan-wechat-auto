@@ -396,7 +396,7 @@ describe("/api/generate", () => {
             source: "manual",
           },
           sourcePack: {
-            productNotes: "旧 request/sourcePack productNotes 不应绕过 V2 卡进入生成 prompt。",
+            productNotes: "用户强调：Loop RPA 要重点讲浏览器里的自动化任务。",
             competitorNotes: "传统 RPA 需要桌面客户端和脚本维护。",
             trendNotes: "旧 trendNotes 不应进入生成 prompt。",
             imageRefs: "旧 imageRefs 不应进入生成 prompt。",
@@ -422,7 +422,8 @@ describe("/api/generate", () => {
     expect(outlinePrompt).toContain("【产品卡 V2 / 禁写边界】");
     expect(outlinePrompt).toContain("未提供真实客户资料,不得写客户案例。");
     expect(bodyPrompt).toContain("【产品卡 V2 / 可推导表达】");
-    expect(bodyPrompt).not.toContain("旧 request/sourcePack productNotes");
+    expect(bodyPrompt).toContain("人工重点/用户强调");
+    expect(bodyPrompt).toContain("Loop RPA 要重点讲浏览器里的自动化任务");
     expect(bodyPrompt).not.toContain("传统 RPA 需要桌面客户端和脚本维护。");
     expect(bodyPrompt).not.toContain("旧 trendNotes");
     expect(bodyPrompt).not.toContain("旧 imageRefs");
