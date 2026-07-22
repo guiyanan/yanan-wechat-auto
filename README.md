@@ -22,6 +22,34 @@ npm run dev
 
 打开 http://localhost:3000。
 
+## Docker 部署
+
+```bash
+# 1. 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local，填入 Qwen、微信、邮件等需要的配置
+
+# 2. 启动 Docker 版本
+docker compose up --build
+```
+
+打开 http://localhost:3000。
+
+Docker 会把这些目录挂载到本机，避免重启容器后数据丢失：
+
+| 本机目录 | 容器目录 | 用途 |
+|---|---|---|
+| `./data/joto` | `/app/data/joto` | 产品库、风格库等持久数据 |
+| `./public/uploads` | `/app/public/uploads` | 产品图片、截图、视频等上传素材 |
+
+常用命令：
+
+| 命令 | 说明 |
+|---|---|
+| `npm run docker:build` | 构建 Docker 镜像 |
+| `npm run docker:up` | 构建并启动容器 |
+| `npm run docker:down` | 停止并移除容器 |
+
 ## 可用脚本
 
 | 命令 | 说明 |
@@ -34,6 +62,9 @@ npm run dev
 | `npm run test` | 跑一次单测 |
 | `npm run test:watch` | 监听模式单测 |
 | `npm run ci` | 完整 CI 检查（typecheck + lint + test） |
+| `npm run docker:build` | 构建 Docker 镜像 |
+| `npm run docker:up` | 构建并启动 Docker 容器 |
+| `npm run docker:down` | 停止 Docker 容器 |
 
 ## 目录结构
 

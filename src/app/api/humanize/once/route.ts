@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { humanize } from "@/lib/qwen";
+import { getDeepSeekChatOptions } from "@/lib/deepseek";
 import { ARTICLE_TYPES, type ArticleType } from "@/lib/articleType";
 
 export const runtime = "nodejs";
@@ -47,7 +48,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const chunks: string[] = [];
-    for await (const delta of humanize({ ...input, signal: req.signal })) {
+    for await (const delta of humanize({
+      ...input,
+      ...getDeepSeekChatOptions(),
+      signal: req.signal,
+    })) {
       chunks.push(delta);
     }
     const body: OnceResponse = { rewritten: chunks.join("") };

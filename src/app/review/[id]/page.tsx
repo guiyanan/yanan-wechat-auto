@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useArticleStore } from "@/store/articleStore";
+import { useWechatTemplateStore } from "@/store/wechatTemplateStore";
+import { useProductStore } from "@/store/productStore";
 import { getAllAccounts, getAllProducts } from "@/lib/articles";
+import { mergeProducts } from "@/lib/productCatalog";
 import type { Article, ReviewAuditEntry, WechatAccount } from "@/types";
 import { AccountPicker } from "@/components/review/AccountPicker";
 import { PreviewCard } from "@/components/review/PreviewCard";
@@ -75,10 +78,14 @@ export default function ReviewPage({
 function ReviewView({ article }: { article: Article }) {
   const router = useRouter();
   const accounts = getAllAccounts();
-  const products = getAllProducts();
+  const customProducts = useProductStore((s) => s.products);
+  const loadProducts = useProductStore((s) => s.loadFromServer);
+  const products = mergeProducts(getAllProducts(), Object.values(customProducts));
   const product = products.find((p) => p.id === article.productId);
   const patch = useArticleStore((s) => s.patch);
   const setStatus = useArticleStore((s) => s.setStatus);
+  const followHeader = useWechatTemplateStore((s) => s.followHeader);
+  const contactFooter = useWechatTemplateStore((s) => s.contactFooter);
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(
     article.accountId
@@ -94,9 +101,16 @@ function ReviewView({ article }: { article: Article }) {
     [article.angleId, article.customAngle]
   );
   const [selectedTheme, setSelectedTheme] = useState<WechatTheme>(
-    article.exportTheme ?? defaultThemeForArticleType(articleType)
+    article.layoutTheme ?? defaultThemeForArticleType(articleType)
   );
   const [decorate, setDecorate] = useState(true);
+  const isTrendArticle = article.generationMeta?.mode === "trend-radar";
+  const effectiveTheme: WechatTheme = isTrendArticle ? "minimal" : selectedTheme;
+  const effectiveDecorate = isTrendArticle ? false : decorate;
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
 
   const account = useMemo<WechatAccount | null>(
     () => accounts.find((a) => a.id === selectedAccountId) ?? null,
@@ -145,15 +159,17 @@ function ReviewView({ article }: { article: Article }) {
         author: article.createdBy,
         publishedAt: article.publishedAt ?? new Date().toISOString(),
         addExplicitNotice: addAigcNotice,
-        theme: selectedTheme,
-        decorate,
+        theme: effectiveTheme,
+        decorate: effectiveDecorate,
         meta: buildAigcMetadata({
           articleId: article.id,
           humanReviewed: true,
           generatedAt: article.createdAt,
         }),
+        jotoFollowHeaderHtml: followHeader?.html,
+        jotoContactFooterHtml: contactFooter?.html,
       }),
-    [article, addAigcNotice, selectedTheme, decorate]
+    [article, addAigcNotice, effectiveTheme, effectiveDecorate, followHeader?.html, contactFooter?.html]
   );
 
   async function handlePublish() {
@@ -205,8 +221,8 @@ function ReviewView({ article }: { article: Article }) {
           title: article.title,
           bodyHtml: article.contentHtml,
           author: article.createdBy,
-          theme: selectedTheme,
-          decorate,
+          theme: effectiveTheme,
+          decorate: effectiveDecorate,
           addAigcNotice: addAigcNotice,
           articleId: article.id,
           digest: article.contentHtml
@@ -214,6 +230,8 @@ function ReviewView({ article }: { article: Article }) {
             .replace(/\s+/g, " ")
             .trim()
             .substring(0, 120),
+          jotoFollowHeaderHtml: followHeader?.html,
+          jotoContactFooterHtml: contactFooter?.html,
         }),
       });
       const data = await res.json();
@@ -256,7 +274,7 @@ function ReviewView({ article }: { article: Article }) {
 
       <main className="mx-auto w-full max-w-6xl px-6 py-8">
         <div className="mb-8">
-          <p className="text-xs font-medium text-blue-600">JOTO 内容工厂 · 审核发布</p>
+          <p className="text-xs font-medium text-blue-600">JOTO小信 · 审核发布</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
             {article.title || "(未命名)"}
           </h1>
@@ -315,7 +333,7 @@ function ReviewView({ article }: { article: Article }) {
                       checked={decorate}
                       onChange={(e) => setDecorate(e.target.checked)}
                     />
-                    自动美化(emoji列表 + 重点提升)
+                    自动美化(SVG 列表图标 + 重点提升)
                   </label>
                 </div>
               </div>

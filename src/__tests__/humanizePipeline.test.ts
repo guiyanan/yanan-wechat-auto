@@ -288,28 +288,51 @@ describe("runStructurePreservingPipeline · structure passthrough", () => {
     "用法段落。",
   ].join("\n");
 
-  it("never invokes humanizeFn on heading / list / blockquote / hr blocks", async () => {
+  it("rewrites paragraphs plus heading/list/blockquote microcopy while keeping markdown wrappers", async () => {
     const seenInputs: string[] = [];
     const fn: HumanizeFn = async (text) => {
       seenInputs.push(text);
-      return text + " [REWRITTEN]";
+      return text + " 改";
     };
-    await runStructurePreservingPipeline(SAMPLE, fn, { maxRounds: 1 });
-    // Only paragraph blocks should have been sent
+    const result = await runStructurePreservingPipeline(SAMPLE, fn, { maxRounds: 1 });
+
     expect(seenInputs).toContain("钩子段落原文。");
     expect(seenInputs).toContain("子段一正文。");
     expect(seenInputs).toContain("用法段落。");
-    // No headings / lists / blockquotes
-    expect(seenInputs.some((s) => s.startsWith("## "))).toBe(false);
-    expect(seenInputs.some((s) => s.startsWith("- "))).toBe(false);
-    expect(seenInputs.some((s) => s.startsWith("> "))).toBe(false);
-    expect(seenInputs).toHaveLength(3);
+    expect(seenInputs).toContain("钩子大段标题");
+    expect(seenInputs).toContain("子段一");
+    expect(seenInputs).toContain("列表项一");
+    expect(seenInputs).toContain("列表项二");
+    expect(seenInputs).toContain("引用一段");
+
+    expect(result.text).toContain("## 钩子大段标题 改");
+    expect(result.text).toContain("### 子段一 改");
+    expect(result.text).toContain("- 列表项一 改");
+    expect(result.text).toContain("- 列表项二 改");
+    expect(result.text).toContain("> 引用一段 改");
+    expect(result.text).not.toContain("## 钩子大段标题\n");
   });
 
-  it("preserves heading / list / blockquote raw text in output", async () => {
+  it("keeps original heading text when microcopy rewrite expands into paragraph prose", async () => {
+    const fn: HumanizeFn = async (text) => {
+      if (text === "钩子大段标题") {
+        return "这是一段被模型扩写出来的长正文。它已经不再像标题,而像一整段文章开头。";
+      }
+      return text;
+    };
+    const result = await runStructurePreservingPipeline(SAMPLE, fn, {
+      maxRounds: 1,
+    });
+
+    expect(result.text).toContain("## 钩子大段标题");
+    expect(result.text).not.toContain("## 这是一段被模型扩写出来的长正文");
+  });
+
+  it("can preserve heading / list / blockquote raw text when microcopy rewrite is disabled", async () => {
     const fn: HumanizeFn = async () => "完全不同的新段落。";
     const result = await runStructurePreservingPipeline(SAMPLE, fn, {
       maxRounds: 1,
+      rewriteMicrocopy: false,
     });
     expect(result.text).toContain("## 钩子大段标题");
     expect(result.text).toContain("### 子段一");
@@ -347,6 +370,7 @@ describe("runStructurePreservingPipeline · structure passthrough", () => {
     const result = await runStructurePreservingPipeline(SAMPLE, fn, {
       maxRounds: 1,
       threshold: 100, // never early-exit
+      rewriteMicrocopy: false,
     });
     // 3 paragraph blocks × 1 round each
     expect(result.totalRounds).toBe(3);

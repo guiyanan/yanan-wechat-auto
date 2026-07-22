@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { sseFromGenerator, streamChat } from "@/lib/qwen";
+import { getDeepSeekChatOptions } from "@/lib/deepseek";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,7 @@ export async function POST(req: NextRequest) {
       : "请用不超过 200 字介绍一下你是谁。";
 
   const generator = streamChat({
+    ...getDeepSeekChatOptions(),
     messages: [
       {
         role: "system",

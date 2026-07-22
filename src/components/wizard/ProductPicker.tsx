@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import type { Product } from "@/types";
 import { cn } from "@/lib/utils";
+import { hasProductMaterial } from "@/lib/productCatalog";
 
 interface ProductPickerProps {
   products: Product[];
@@ -19,6 +20,7 @@ export function ProductPicker({
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((product) => {
         const selected = selectedId === product.id;
+        const ready = hasProductMaterial(product);
         return (
           <li key={product.id}>
             <button
@@ -67,7 +69,10 @@ export function ProductPicker({
                 ))}
               </div>
               <p className="mt-1 text-[11px] text-slate-400">
-                {product.knowledgeDocs.length} 篇知识库文档
+                {product.knowledgeDocs.length} 篇知识库文档 ·{" "}
+                <span className={ready ? "text-emerald-600" : "text-amber-600"}>
+                  {ready ? "产品资料已完善" : "资料待完善"}
+                </span>
               </p>
             </button>
           </li>

@@ -27,7 +27,7 @@ describe("/api/humanize/once · validation", () => {
 
   it("returns 400 when text is missing", async () => {
     const res = await POST(
-      makeReq({ articleType: "产品推广", styleName: "x", styleProfile: "y" }) as never
+      makeReq({ articleType: "产品介绍", styleName: "x", styleProfile: "y" }) as never
     );
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("text required");
@@ -37,7 +37,7 @@ describe("/api/humanize/once · validation", () => {
     const res = await POST(
       makeReq({
         text: "   \n  ",
-        articleType: "产品推广",
+        articleType: "产品介绍",
         styleName: "x",
         styleProfile: "y",
       }) as never
@@ -57,9 +57,10 @@ describe("/api/humanize/once · validation", () => {
     expect(res.status).toBe(400);
     const body = await res.text();
     expect(body).toMatch(/articleType required/);
-    expect(body).toContain("产品推广");
-    expect(body).toContain("场景推广");
-    expect(body).toContain("峰会消息");
+    expect(body).toContain("产品介绍");
+    expect(body).toContain("产品差异");
+    expect(body).toContain("竞品对比");
+    expect(body).toContain("时事热点");
   });
 
   it("returns 400 when articleType is unrecognized", async () => {
@@ -82,7 +83,7 @@ describe("/api/humanize/once · validation", () => {
       makeReq({
         text: "测试段落",
         intent: "改写",
-        articleType: "产品推广",
+        articleType: "产品介绍",
         styleName: "默认",
         styleProfile: "",
       }) as never

@@ -6,27 +6,21 @@ import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { Stepper, type StepKey } from "./Stepper";
 import { SummaryCard } from "./SummaryCard";
 import { useWizardStore } from "@/store/wizardStore";
+import { useProductStore } from "@/store/productStore";
 import { getAllProducts } from "@/lib/articles";
-import anglesData from "@/data/angles.json";
-import stylesData from "@/data/styles.json";
-import type { Angle, WritingStyle } from "@/types";
+import { mergeProducts } from "@/lib/productCatalog";
 import { cn } from "@/lib/utils";
 
-const ANGLES = anglesData as Angle[];
-const STYLES = stylesData as WritingStyle[];
-
 const NEXT_ROUTE: Record<StepKey, string | null> = {
-  product: "/wizard/angle",
-  angle: "/wizard/style",
-  style: "/wizard/generating",
+  product: "/wizard/generating",
   generating: null,
+  batch: null,
 };
 
 const PREV_ROUTE: Record<StepKey, string | null> = {
   product: "/",
-  angle: "/wizard/product",
-  style: "/wizard/angle",
-  generating: "/wizard/style",
+  generating: "/wizard/product",
+  batch: "/wizard/product",
 };
 
 interface WizardFrameProps {
@@ -55,32 +49,25 @@ export function WizardFrame({
   useEffect(() => setMounted(true), []);
 
   const storeProductId = useWizardStore((s) => s.productId);
-  const storeAngleIds = useWizardStore((s) => s.angleIds);
-  const storeCustomAngle = useWizardStore((s) => s.customAngle);
-  const storeStyleIds = useWizardStore((s) => s.styleIds);
+  const customProducts = useProductStore((s) => s.products);
+  const loadProducts = useProductStore((s) => s.loadFromServer);
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
 
   const productId = mounted ? storeProductId : null;
-  const angleIds = mounted ? storeAngleIds : [];
-  const customAngle = mounted ? storeCustomAngle : "";
-  const styleIds = mounted ? storeStyleIds : [];
 
-  const product = getAllProducts().find((p) => p.id === productId) ?? null;
-  const selectedAngles = ANGLES.filter((a) => angleIds.includes(a.id));
-  const selectedStyles = STYLES.filter((s) => styleIds.includes(s.id));
+  const products = mergeProducts(getAllProducts(), Object.values(customProducts));
+  const product = products.find((p) => p.id === productId) ?? null;
 
-  const hasAngle = angleIds.length > 0 || customAngle.trim().length > 0;
-  const completedThrough: StepKey | null = styleIds.length > 0
-    ? "style"
-    : hasAngle
-      ? "angle"
-      : productId
-        ? "product"
-        : null;
+  const completedThrough: StepKey | null =
+    step === "generating" || step === "batch" ? "product" : null;
 
   const next = NEXT_ROUTE[step];
   const prev = PREV_ROUTE[step];
 
-  const isFinalStep = step === "style";
+  const isFinalStep = step === "product";
   const buttonLabel =
     primaryLabel ?? (isFinalStep ? "开始生成" : "下一步");
 
@@ -101,7 +88,7 @@ export function WizardFrame({
             >
               J
             </div>
-            JOTO 内容工厂
+            JOTO小信
           </Link>
           <div className="ml-4 flex-1">
             <Stepper current={step} completedThrough={completedThrough} />
@@ -127,9 +114,6 @@ export function WizardFrame({
         </div>
         <SummaryCard
           product={product}
-          angles={selectedAngles}
-          customAngle={customAngle}
-          styles={selectedStyles}
         />
       </main>
 

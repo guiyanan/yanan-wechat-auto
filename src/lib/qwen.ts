@@ -31,6 +31,7 @@ export class QwenTimeoutError extends Error {
 
 export interface QwenClientOptions {
   apiKey?: string;
+  apiKeyEnvName?: string;
   baseURL?: string;
   /**
    * For testing: inject a custom OpenAI-compatible client.
@@ -41,9 +42,10 @@ export interface QwenClientOptions {
 
 export function createQwenClient(options: QwenClientOptions = {}): OpenAI {
   if (options.client) return options.client;
-  const apiKey = options.apiKey ?? process.env.DASHSCOPE_API_KEY;
+  const apiKeyEnvName = options.apiKeyEnvName ?? "DASHSCOPE_API_KEY";
+  const apiKey = options.apiKey ?? process.env[apiKeyEnvName];
   if (!apiKey) {
-    throw new QwenAuthError("DASHSCOPE_API_KEY is not set");
+    throw new QwenAuthError(`${apiKeyEnvName} is not set`);
   }
   return new OpenAI({
     apiKey,
@@ -64,9 +66,13 @@ function wrapApiError(error: unknown): Error {
 
 export interface StreamChatOptions {
   model?: string;
+  apiKey?: string;
+  apiKeyEnvName?: string;
+  baseURL?: string;
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   temperature?: number;
   maxTokens?: number;
+  responseFormat?: { type: "json_object" };
   signal?: AbortSignal;
   client?: OpenAI;
 }
@@ -78,7 +84,12 @@ export interface StreamChatOptions {
 export async function* streamChat(
   options: StreamChatOptions
 ): AsyncGenerator<string, void, unknown> {
-  const client = createQwenClient({ client: options.client });
+  const client = createQwenClient({
+    apiKey: options.apiKey,
+    apiKeyEnvName: options.apiKeyEnvName,
+    baseURL: options.baseURL,
+    client: options.client,
+  });
   const model =
     options.model ?? process.env.QWEN_MODEL_GENERATE ?? "qwen-plus";
 
@@ -113,7 +124,12 @@ export interface CompleteChatOptions extends StreamChatOptions {
 export async function completeChat(
   options: CompleteChatOptions
 ): Promise<string> {
-  const client = createQwenClient({ client: options.client });
+  const client = createQwenClient({
+    apiKey: options.apiKey,
+    apiKeyEnvName: options.apiKeyEnvName,
+    baseURL: options.baseURL,
+    client: options.client,
+  });
   const model =
     options.model ?? process.env.QWEN_MODEL_GENERATE ?? "qwen-plus";
 
@@ -124,6 +140,7 @@ export async function completeChat(
         messages: options.messages,
         temperature: options.temperature ?? 0.8,
         max_tokens: options.maxTokens ?? 4000,
+        response_format: options.responseFormat,
         stream: false,
       },
       { signal: options.signal }
@@ -171,6 +188,11 @@ export interface GenerateOutlineArgs {
   productDesc: string;
   angle: string;
   angleInstruction: string;
+  sourcePack?: string;
+  model?: string;
+  apiKey?: string;
+  apiKeyEnvName?: string;
+  baseURL?: string;
   client?: OpenAI;
   signal?: AbortSignal;
 }
@@ -181,6 +203,7 @@ export async function generateOutline(args: GenerateOutlineArgs): Promise<string
     productDesc: args.productDesc,
     angle: args.angle,
     angleInstruction: args.angleInstruction,
+    sourcePack: args.sourcePack ?? "",
   });
 }
 
@@ -203,6 +226,7 @@ export async function* generateBody(
     styleProfile: args.styleProfile,
     styleSample: args.styleSample,
     outline: args.outline,
+    sourcePack: args.sourcePack ?? "",
   });
 }
 
@@ -211,6 +235,10 @@ export interface GenerateTitlesArgs {
   angle: string;
   styleName: string;
   body: string;
+  model?: string;
+  apiKey?: string;
+  apiKeyEnvName?: string;
+  baseURL?: string;
   client?: OpenAI;
   signal?: AbortSignal;
 }
@@ -270,6 +298,10 @@ export interface HumanizeArgs {
   styleName: string;
   styleProfile: string;
   articleType: ArticleType;
+  model?: string;
+  apiKey?: string;
+  apiKeyEnvName?: string;
+  baseURL?: string;
   client?: OpenAI;
   signal?: AbortSignal;
 }
@@ -290,6 +322,10 @@ export interface FactcheckArgs {
   product: string;
   productDesc: string;
   body: string;
+  model?: string;
+  apiKey?: string;
+  apiKeyEnvName?: string;
+  baseURL?: string;
   client?: OpenAI;
   signal?: AbortSignal;
 }
@@ -328,6 +364,10 @@ export async function factcheck(
 
 interface CallArgs {
   client?: OpenAI;
+  model?: string;
+  apiKey?: string;
+  apiKeyEnvName?: string;
+  baseURL?: string;
   signal?: AbortSignal;
 }
 
@@ -338,7 +378,10 @@ async function callPromptNonStream(
 ): Promise<string> {
   const p = renderPrompt(node, vars);
   return completeChat({
-    model: p.model,
+    model: callArgs.model ?? p.model,
+    apiKey: callArgs.apiKey,
+    apiKeyEnvName: callArgs.apiKeyEnvName,
+    baseURL: callArgs.baseURL,
     temperature: p.temperature,
     maxTokens: p.maxTokens,
     messages: [
@@ -357,7 +400,10 @@ async function* callPromptStream(
 ): AsyncGenerator<string, void, unknown> {
   const p = renderPrompt(node, vars);
   yield* streamChat({
-    model: p.model,
+    model: callArgs.model ?? p.model,
+    apiKey: callArgs.apiKey,
+    apiKeyEnvName: callArgs.apiKeyEnvName,
+    baseURL: callArgs.baseURL,
     temperature: p.temperature,
     maxTokens: p.maxTokens,
     messages: [

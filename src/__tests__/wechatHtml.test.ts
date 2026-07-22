@@ -86,4 +86,81 @@ describe("wechatHtml · exportWechatHtml", () => {
     });
     expect(html).not.toMatch(/joto-byline/);
   });
+
+  it("adds JOTO official-account follow and contact furniture for decorated JOTO exports", () => {
+    const html = exportWechatHtml({
+      title: "x",
+      bodyHtml: "<p>正文</p>",
+      theme: "joto",
+      decorate: true,
+    });
+
+    expect(html).toContain("点击蓝字 关注我们");
+    expect(html).toContain("fy");
+    expect(html).toContain("JOTO");
+    expect(html).toContain("企业微信");
+    expect(html).toContain("JOTO AI");
+    expect(html).toContain("官方网站");
+    expect(html).toContain("jotoai.com");
+    expect(html).toContain("jotoai@jototech.cn");
+    expect(html).toContain("长按识别二维码 联系我们");
+    expect(html).toContain("/joto-enterprise-wechat-qr.jpg");
+    expect(html).toContain("<svg");
+    expect(html).toContain("<animate");
+    expect(html).not.toContain("往期回顾");
+    expect(html).not.toContain("✅");
+    expect(html).not.toContain("⭐");
+  });
+
+  it("does not add JOTO furniture for non-decorated or non-JOTO exports", () => {
+    const jotoPlain = exportWechatHtml({
+      title: "x",
+      bodyHtml: "<p>正文</p>",
+      theme: "joto",
+      decorate: false,
+    });
+    const minimalDecorated = exportWechatHtml({
+      title: "x",
+      bodyHtml: "<p>正文</p>",
+      theme: "minimal",
+      decorate: true,
+    });
+
+    expect(jotoPlain).not.toContain("点击蓝字 关注我们");
+    expect(jotoPlain).not.toContain("企业微信");
+    expect(minimalDecorated).not.toContain("点击蓝字 关注我们");
+    expect(minimalDecorated).not.toContain("企业微信");
+  });
+
+  it("renders hotspot-style plain paragraphs without decorated section furniture", () => {
+    const html = exportWechatHtml({
+      title: "现在大家都在用哪些 AI 笔记本",
+      bodyHtml: "<p>最近很多人开始试 AI 笔记工具。</p><p>不是为了赶时髦,而是真的不想再手抄会议记录。</p>",
+      theme: "minimal",
+      decorate: false,
+    });
+
+    expect(html).toContain("最近很多人开始试 AI 笔记工具。");
+    expect(html).not.toContain("点击蓝字 关注我们");
+    expect(html).not.toContain("PART");
+    expect(html).not.toContain("joto-follow-header");
+    expect(html).not.toContain("<blockquote");
+    expect(html).not.toContain("<h2");
+  });
+
+  it("uses captured JOTO furniture when provided", () => {
+    const html = exportWechatHtml({
+      title: "x",
+      bodyHtml: "<p>正文</p>",
+      theme: "joto",
+      decorate: true,
+      jotoFollowHeaderHtml: '<section data-captured="header">自定义头部</section>',
+      jotoContactFooterHtml: '<section data-captured="footer">自定义尾部</section>',
+    });
+
+    expect(html).toContain("自定义头部");
+    expect(html).toContain("自定义尾部");
+    expect(html).not.toContain("点击蓝字 关注我们");
+    expect(html).not.toContain("joto-enterprise-wechat-qr.jpg");
+  });
 });

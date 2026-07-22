@@ -22,6 +22,7 @@ interface FakeCreateCall {
   temperature: number;
   max_tokens: number;
   stream: boolean;
+  response_format?: { type: string };
 }
 
 interface FakeOpenAI {
@@ -133,6 +134,22 @@ describe("qwen · completeChat", () => {
       client: fake as unknown as OpenAI,
     });
     expect(out).toBe("");
+  });
+
+  it("can request JSON object output", async () => {
+    let captured: FakeCreateCall | null = null;
+    const fake = makeFakeClient((call) => {
+      captured = call;
+      return { choices: [{ message: { content: "{\"ok\":true}" } }] };
+    });
+
+    await completeChat({
+      messages: [{ role: "user", content: "x" }],
+      responseFormat: { type: "json_object" },
+      client: fake as unknown as OpenAI,
+    });
+
+    expect(captured!.response_format).toEqual({ type: "json_object" });
   });
 });
 
@@ -261,7 +278,7 @@ describe("qwen · humanize", () => {
       text: "原文",
       styleName: "卡兹克",
       styleProfile: "口语",
-      articleType: "产品推广",
+      articleType: "产品介绍",
       client: fake as unknown as OpenAI,
     })) {
       out.push(d);

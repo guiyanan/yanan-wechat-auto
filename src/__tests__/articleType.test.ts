@@ -6,21 +6,21 @@ import {
 } from "@/lib/articleType";
 
 describe("articleType · inferArticleType", () => {
-  it("falls back to 产品推广 when nothing is provided", () => {
-    expect(inferArticleType({})).toBe("产品推广");
+  it("falls back to 产品介绍 when nothing is provided", () => {
+    expect(inferArticleType({})).toBe("产品介绍");
     expect(inferArticleType({ angleId: null, customAngle: null })).toBe(
-      "产品推广"
+      "产品介绍"
     );
   });
 
-  // C1: 3 angles replace the previous 10. Each must map cleanly to one of
-  // the three article-type keys (which still drive humanize prompt branching
-  // and 排版 theme defaults). If anyone adds an angle without a category,
-  // this test is the canary.
+  // JOTO content factory has five primary angles. Each must map cleanly to
+  // the article-type keys that drive prompts and theme defaults.
   const seedAngleExpectations: Record<string, ArticleType> = {
-    "angle-promo": "产品推广",
-    "angle-compare": "场景推广",
-    "angle-summit": "峰会消息",
+    "angle-product-intro": "产品介绍",
+    "angle-product-diff": "产品差异",
+    "angle-competitor": "竞品对比",
+    "angle-trend": "时事热点",
+    "angle-scenario": "场景案例",
   };
 
   for (const [angleId, expected] of Object.entries(seedAngleExpectations)) {
@@ -32,50 +32,72 @@ describe("articleType · inferArticleType", () => {
   it("unknown angleId falls back to customAngle scan", () => {
     expect(
       inferArticleType({ angleId: "angle-totally-bogus", customAngle: "" })
-    ).toBe("产品推广");
+    ).toBe("产品介绍");
   });
 
-  it("customAngle 峰会 keyword → 峰会消息", () => {
+  it("customAngle 热点 keyword → 时事热点", () => {
     expect(
-      inferArticleType({ customAngle: "下个月的智能办公峰会现场报道" })
-    ).toBe("峰会消息");
-    expect(inferArticleType({ customAngle: "圆桌讨论的关键观点" })).toBe(
-      "峰会消息"
+      inferArticleType({ customAngle: "结合最近行业热点写一篇对比稿" })
+    ).toBe("时事热点");
+    expect(inferArticleType({ customAngle: "一篇新闻事件借势评论" })).toBe(
+      "时事热点"
     );
-    expect(inferArticleType({ customAngle: "技术沙龙速记" })).toBe("峰会消息");
   });
 
-  it("customAngle 场景 keyword → 场景推广", () => {
-    expect(inferArticleType({ customAngle: "对账场景的实操踩坑笔记" })).toBe(
-      "场景推广"
+  it("customAngle 竞品 keyword → 竞品对比", () => {
+    expect(inferArticleType({ customAngle: "和传统监控平台做竞品对比" })).toBe(
+      "竞品对比"
     );
-    expect(inferArticleType({ customAngle: "三周复盘:落地过程" })).toBe(
-      "场景推广"
+    expect(inferArticleType({ customAngle: "为什么比某类平台更适合" })).toBe(
+      "竞品对比"
     );
-    expect(inferArticleType({ customAngle: "上手教程" })).toBe("场景推广");
   });
 
-  it("customAngle without recognized keywords → 产品推广", () => {
-    expect(inferArticleType({ customAngle: "面向 CFO 的 ROI 视角" })).toBe(
-      "产品推广"
+  it("customAngle 差异 keyword → 产品差异", () => {
+    expect(inferArticleType({ customAngle: "突出相对传统方案的产品差异" })).toBe(
+      "产品差异"
     );
-    expect(inferArticleType({ customAngle: "为什么我们卖得贵" })).toBe(
-      "产品推广"
+    expect(inferArticleType({ customAngle: "讲清楚新方案的优势变化" })).toBe(
+      "产品差异"
+    );
+  });
+
+  it("customAngle without recognized keywords → 产品介绍", () => {
+    expect(inferArticleType({ customAngle: "面向 CIO 的 ROI 视角" })).toBe(
+      "产品介绍"
+    );
+    expect(inferArticleType({ customAngle: "面向 CIO 的 ROI 视角" })).toBe(
+      "产品介绍"
+    );
+  });
+
+  it("customAngle 场景 keyword → 场景案例", () => {
+    expect(inferArticleType({ customAngle: "讲清这个产品怎么使用" })).toBe(
+      "场景案例"
+    );
+    expect(inferArticleType({ customAngle: "客户故事和真实场景案例" })).toBe(
+      "场景案例"
     );
   });
 
   it("angleId category wins over customAngle keyword", () => {
-    // angle-promo is 产品推广; even if customAngle contains a 峰会 keyword,
+    // angle-product-intro is 产品介绍; even if customAngle contains a 热点 keyword,
     // the angleId still takes precedence.
     expect(
       inferArticleType({
-        angleId: "angle-promo",
-        customAngle: "峰会案例分享",
+        angleId: "angle-product-intro",
+        customAngle: "热点竞品对比",
       })
-    ).toBe("产品推广");
+    ).toBe("产品介绍");
   });
 
   it("ARTICLE_TYPES list is stable", () => {
-    expect(ARTICLE_TYPES).toEqual(["产品推广", "场景推广", "峰会消息"]);
+    expect(ARTICLE_TYPES).toEqual([
+      "产品介绍",
+      "产品差异",
+      "竞品对比",
+      "时事热点",
+      "场景案例",
+    ]);
   });
 });

@@ -30,17 +30,66 @@ export interface ComplianceResult {
 }
 
 import type { WechatTheme } from "@/lib/wechatThemes";
+import type { AngleStrategy, ContentLength, TopicPlan, TrafficHookMode } from "./topic";
+import type { TrendSearchResult } from "./trend";
 
 /**
  * Article lifecycle stage in the batch-preview flow.
  *
- *   "batch" — freshly generated, sitting in the batch preview page;
- *             NOT shown in the main Dashboard until humanize promotes it.
- *   "main"  — promoted (humanized) into the main Dashboard, or a legacy
- *             article. `undefined` is treated as "main" for backward
- *             compatibility with seed data and old drafts.
+ *   "batch" — freshly generated or PM-review candidate, sitting in the
+ *             batch preview page; NOT shown in the main Dashboard.
+ *   "main"  — promoted into the main Dashboard, or a legacy article.
+ *             `undefined` is treated as "main" for backward compatibility.
  */
 export type ArticleStage = "batch" | "main";
+
+export interface ArticleSourceContext {
+  productNotes?: string;
+  mediaNotes?: string;
+}
+
+export interface ArticleStoryMeta {
+  scene?: string;
+  pain?: string;
+  productMoment?: string;
+  keyLine?: string;
+}
+
+export interface ArticleGenerationMeta {
+  mode: "manual" | "auto-five" | "trend-radar" | "paste-format";
+  angleLabel: string;
+  angleReason?: string;
+  topicPlan?: TopicPlan;
+  contentLength?: ContentLength;
+  angleStrategy?: AngleStrategy;
+  styleSource: "official" | "learned";
+  learnedStyleId?: string;
+  learnedStyleName?: string;
+  trendStyleId?: string;
+  trendStyleName?: string;
+  trendStyleSource?: "learned" | "fallback";
+  trafficHookLabel?: string;
+  trafficHookMode?: TrafficHookMode;
+  mainstreamAnchor?: string;
+  sourceTrace?: TrendSearchResult[];
+  imageAssetIds?: string[];
+  imageSlotCount?: number;
+  missingImageSlots?: number;
+}
+
+export type ArticleHumanizeStatus = "pending" | "running" | "passed" | "failed";
+
+export interface ArticleHumanizeMeta {
+  status: ArticleHumanizeStatus;
+  score?: number;
+  beforeScore?: number;
+  afterScore?: number;
+  similarity?: number;
+  mode?: "two-pass-strong" | "legacy";
+  checkedAt?: string;
+  iterations?: number;
+  error?: string;
+}
 
 export interface Article {
   id: string;
@@ -50,6 +99,11 @@ export interface Article {
   styleId: string;
   accountId?: string;
   exportTheme?: WechatTheme;
+  layoutTheme?: WechatTheme;
+  sourceContext?: ArticleSourceContext;
+  storyMeta?: ArticleStoryMeta;
+  generationMeta?: ArticleGenerationMeta;
+  humanizeMeta?: ArticleHumanizeMeta;
   status: ArticleStatus;
   title: string;
   titleCandidates: string[];
@@ -64,6 +118,8 @@ export interface Article {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+  wechatDraftMediaId?: string;
+  wechatPushedAt?: string;
   readers?: number;
   /**
    * Batch ID grouping a single generation run's articles together.

@@ -5,11 +5,14 @@
  *   0   = sounds completely human
  *   100 = clearly AI-generated
  *
- * Dimension weights (summing to 100):
+ * Dimension weights:
  *   1. AI phrase density       40 pts — hits from PHRASE_BLACKLIST per 100 chars
  *   2. Sentence-length uniformity 30 pts — low stddev signals AI cadence
  *   3. Repeated sentence openers  15 pts — same 2-char prefix on consecutive sentences
  *   4. Passive / filler ratio  15 pts — stock passive patterns AI overuses
+ *   5. Corporate / whitepaper cliche 20 pts — official-sounding market prose
+ *   6. Template structure smell 12 pts — 产品概述/价值分析-style outlines
+ *   7. Unsupported fact risk 15 pts — invented metrics / pseudo customer proof
  *
  * Pure function — no LLM calls, no side effects.
  */
@@ -39,6 +42,50 @@ const PASSIVE_FILLERS: readonly string[] = [
   "在这一背景下",
   "基于此",
 ];
+
+const CORPORATE_WHITEPAPER_CLICHES: readonly string[] = [
+  "价值分析",
+  "需求概述",
+  "产品概述",
+  "效果分析",
+  "核心能力",
+  "全面赋能",
+  "显著提升",
+  "场景闭环",
+  "全流程闭环",
+  "生态协同",
+  "解决方案",
+  "落地实践",
+  "智能化升级",
+  "业务创新",
+  "可复制",
+  "组织效率",
+  "系统化",
+  "一体化",
+  "全生命周期",
+  "可持续",
+  "高质量发展",
+  "数字化转型",
+] as const;
+
+const TEMPLATE_STRUCTURE_LABELS: readonly string[] = [
+  "产品概述",
+  "需求概述",
+  "价值分析",
+  "效果分析",
+  "功能分析",
+  "技术架构",
+  "应用场景",
+  "客户实证",
+  "案例分析",
+] as const;
+
+const UNSUPPORTED_FACT_PATTERNS: readonly RegExp[] = [
+  /(?:提升|提高|降低|减少|缩短|节省|压缩|增长|覆盖|达到).{0,12}\d+(?:\.\d+)?%/g,
+  /(?:年营收|营收|收入|融资|估值).{0,12}(?:¥|￥)?\d+(?:\.\d+)?\s*(?:万|亿|百万|千万)/g,
+  /(?:某|一家|多家)[\u4e00-\u9fffA-Za-z0-9]{2,18}(?:公司|企业|集团|品牌|客户)/g,
+  /(?:上线|部署|落地|接入).{0,12}\d+\s*(?:天|周|月|小时|分钟)/g,
+] as const;
 
 // ─── Internal helpers ────────────────────────────────────────────────
 
@@ -172,6 +219,48 @@ function passiveFillerScore(text: string): number {
   return Math.min(15, Math.round((hitsPerHundred / 2) * 15));
 }
 
+// ─── Dimension 5: Corporate / Whitepaper Cliche (0–20) ──────────────
+
+function corporateClicheScore(text: string): number {
+  const clean = stripHtml(text);
+  const charCount = clean.length;
+  if (charCount === 0) return 0;
+
+  let hits = 0;
+  for (const phrase of CORPORATE_WHITEPAPER_CLICHES) {
+    let pos = 0;
+    while ((pos = clean.indexOf(phrase, pos)) !== -1) {
+      hits++;
+      pos += phrase.length;
+    }
+  }
+
+  const hitsPerHundred = (hits / charCount) * 100;
+  return Math.min(20, Math.round((hitsPerHundred / 1.8) * 20));
+}
+
+// ─── Dimension 6: Template Structure Smell (0–12) ───────────────────
+
+function templateStructureScore(text: string): number {
+  const clean = stripHtml(text);
+  const hits = TEMPLATE_STRUCTURE_LABELS.filter((label) =>
+    clean.includes(label)
+  ).length;
+  if (hits < 2) return 0;
+  return Math.min(12, (hits - 1) * 4);
+}
+
+// ─── Dimension 7: Unsupported Fact Risk (0–15) ──────────────────────
+
+function unsupportedFactRiskScore(text: string): number {
+  const clean = stripHtml(text);
+  let hits = 0;
+  for (const pattern of UNSUPPORTED_FACT_PATTERNS) {
+    hits += clean.match(pattern)?.length ?? 0;
+  }
+  return Math.min(15, hits * 5);
+}
+
 // ─── Public API ──────────────────────────────────────────────────────
 
 export interface ScoreBreakdown {
@@ -183,6 +272,12 @@ export interface ScoreBreakdown {
   repeatedOpeners: number;
   /** Passive / filler ratio contribution (0–15). */
   passiveFiller: number;
+  /** Corporate / whitepaper cliche contribution (0–20). */
+  corporateCliche: number;
+  /** Template structure smell contribution (0–12). */
+  templateStructure: number;
+  /** Unsupported metrics / pseudo-proof risk contribution (0–15). */
+  unsupportedFactRisk: number;
   /** Sum of all dimensions, capped at 100. */
   total: number;
 }
@@ -198,12 +293,30 @@ export function detectScore(text: string): ScoreBreakdown {
   const sentenceUniformity = sentenceUniformityScore(text);
   const repeatedOpeners = repeatedOpenersScore(text);
   const passiveFiller = passiveFillerScore(text);
+  const corporateCliche = corporateClicheScore(text);
+  const templateStructure = templateStructureScore(text);
+  const unsupportedFactRisk = unsupportedFactRiskScore(text);
   const total = Math.min(
     100,
-    phraseDensity + sentenceUniformity + repeatedOpeners + passiveFiller
+    phraseDensity +
+      sentenceUniformity +
+      repeatedOpeners +
+      passiveFiller +
+      corporateCliche +
+      templateStructure +
+      unsupportedFactRisk
   );
 
-  return { phraseDensity, sentenceUniformity, repeatedOpeners, passiveFiller, total };
+  return {
+    phraseDensity,
+    sentenceUniformity,
+    repeatedOpeners,
+    passiveFiller,
+    corporateCliche,
+    templateStructure,
+    unsupportedFactRisk,
+    total,
+  };
 }
 
 /**

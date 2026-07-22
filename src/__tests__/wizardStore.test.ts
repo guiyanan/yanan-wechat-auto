@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useWizardStore } from "@/store/wizardStore";
+import { AUTO_ARTICLE_COUNT } from "@/lib/generationConstants";
 
 const initialSnapshot = useWizardStore.getState();
 
@@ -9,6 +10,14 @@ beforeEach(() => {
     angleIds: [],
     customAngle: "",
     styleIds: [],
+    mode: "manual",
+    articleCount: AUTO_ARTICLE_COUNT,
+    contentLength: "standard",
+    angleStrategy: "auto",
+    sourcePack: {
+      productNotes: "",
+      mediaNotes: "",
+    },
   });
 });
 
@@ -102,6 +111,73 @@ describe("wizardStore · angle multi-select", () => {
     expect(useWizardStore.getState().customAngle).toBe("");
     expect(useWizardStore.getState().productId).toBeNull();
     expect(useWizardStore.getState().styleIds).toEqual([]);
+    expect(useWizardStore.getState().mode).toBe("manual");
+    expect(useWizardStore.getState().contentLength).toBe("standard");
+    expect(useWizardStore.getState().angleStrategy).toBe("auto");
+  });
+});
+
+describe("wizardStore · auto generation preferences", () => {
+  it("stores content length and angle strategy independently", () => {
+    const state = useWizardStore.getState();
+    state.setContentLength("short");
+    state.setAngleStrategy("comparison");
+
+    expect(useWizardStore.getState().contentLength).toBe("short");
+    expect(useWizardStore.getState().angleStrategy).toBe("comparison");
+  });
+
+  it("startAutoFive preserves generation preferences", () => {
+    const state = useWizardStore.getState();
+    state.setContentLength("deep");
+    state.setAngleStrategy("education");
+
+    state.startAutoFive("prod-loop");
+
+    expect(useWizardStore.getState()).toMatchObject({
+      productId: "prod-loop",
+      mode: "auto-five",
+      contentLength: "deep",
+      angleStrategy: "education",
+    });
+  });
+});
+
+describe("wizardStore · auto-five mode", () => {
+  it("startAutoFive keeps product and clears manual angle/style choices", () => {
+    const state = useWizardStore.getState();
+    state.toggleAngleId("angle-product-intro");
+    state.toggleStyleId("style-joto");
+    state.setCustomAngle("自定义角度");
+
+    state.startAutoFive("prod-loop");
+
+    expect(useWizardStore.getState()).toMatchObject({
+      productId: "prod-loop",
+      mode: "auto-five",
+      articleCount: AUTO_ARTICLE_COUNT,
+      angleIds: [],
+      customAngle: "",
+      styleIds: [],
+    });
+  });
+
+  it("startTrendRadar keeps product and clears manual angle/style choices", () => {
+    const state = useWizardStore.getState();
+    state.toggleAngleId("angle-product-intro");
+    state.toggleStyleId("style-joto");
+    state.setCustomAngle("自定义角度");
+
+    state.startTrendRadar("prod-loop");
+
+    expect(useWizardStore.getState()).toMatchObject({
+      productId: "prod-loop",
+      mode: "trend-radar",
+      articleCount: AUTO_ARTICLE_COUNT,
+      angleIds: [],
+      customAngle: "",
+      styleIds: [],
+    });
   });
 });
 
@@ -154,5 +230,72 @@ describe("wizardStore · style multi-select", () => {
     toggleStyleId("style-joto");
     expect(useWizardStore.getState().angleIds).toEqual(["angle-promo"]);
     expect(useWizardStore.getState().styleIds).toEqual([]);
+  });
+});
+
+describe("wizardStore · sourcePack", () => {
+  it("starts with empty sourcePack fields", () => {
+    expect(useWizardStore.getState().sourcePack).toEqual({
+      productNotes: "",
+      mediaNotes: "",
+    });
+  });
+
+  it("setSourcePack merges the unified material fields without old side channels", () => {
+    const { setSourcePack } = useWizardStore.getState();
+    setSourcePack({ productNotes: "Pharaoh Command: AI 智问中枢" });
+    setSourcePack({ mediaNotes: "截图素材：智问入口" });
+
+    expect(useWizardStore.getState().sourcePack).toMatchObject({
+      productNotes: "Pharaoh Command: AI 智问中枢",
+      mediaNotes: "截图素材：智问入口",
+    });
+    expect(useWizardStore.getState().sourcePack).not.toHaveProperty(
+      "competitorNotes"
+    );
+    expect(useWizardStore.getState().sourcePack).not.toHaveProperty("trendNotes");
+    expect(useWizardStore.getState().sourcePack).not.toHaveProperty("imageRefs");
+  });
+
+  it("reset() clears sourcePack", () => {
+    useWizardStore.getState().setSourcePack({
+      productNotes: "产品素材",
+      mediaNotes: "截图素材",
+    });
+    useWizardStore.getState().reset();
+    expect(useWizardStore.getState().sourcePack).toEqual({
+      productNotes: "",
+      mediaNotes: "",
+    });
+  });
+
+  it("startTrendRadar clears sourcePack from the previous product", () => {
+    const state = useWizardStore.getState();
+    state.setSourcePack({
+      productNotes: "Fasium AI 服装设计、AI试衣、Tech Pack",
+      mediaNotes: "Fasium 截图素材",
+    });
+
+    state.startTrendRadar("prod-competitor-analysis");
+
+    expect(useWizardStore.getState().sourcePack).toEqual({
+      productNotes: "",
+      mediaNotes: "",
+    });
+  });
+
+  it("startAutoFive clears sourcePack from the previous product", () => {
+    const state = useWizardStore.getState();
+    state.setSourcePack({
+      productNotes: "Fasium AI 服装设计、AI试衣、Tech Pack",
+      mediaNotes: "Fasium 截图素材",
+    });
+
+    state.startAutoFive("prod-competitor-analysis");
+
+    expect(useWizardStore.getState().sourcePack).toEqual({
+      productNotes: "",
+      mediaNotes: "",
+    });
   });
 });

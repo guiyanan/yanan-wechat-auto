@@ -1,0 +1,887 @@
+{
+  "updatedAt": "2026-06-26T07:24:25.981Z",
+  "products": {
+    "prod-local-mpc36ezi": {
+      "id": "prod-local-mpc36ezi",
+      "name": "Fasium AI",
+      "description": "FasiumAI is the leading AI fashion design platform offering real-time trend observation, inspiration curation, and one-click high-fidelity design generation, helping brands cut design cycles by 70%.",
+      "tags": [],
+      "iconGradient": [
+        "#1268FF",
+        "#5B8CFF"
+      ],
+      "knowledgeDocs": [
+        {
+          "id": "doc-mqhexi3x",
+          "fileName": "Fasium 使用手册v2(1).pdf",
+          "fileType": "pdf",
+          "sizeKb": 20630,
+          "ragStatus": "failed",
+          "uploadedAt": "2026-06-17T01:49:13.583Z",
+          "extractedText": ""
+        }
+      ],
+      "sourcePack": {
+        "productNotes": "",
+        "competitorNotes": "",
+        "trendNotes": "",
+        "imageRefs": "",
+        "websiteNotes": "官网链接：https://fasium.jotoai.com/\n页面标题：FasiumAI - AI-Powered Fashion Design Platform | AI 驱动的时尚设计平台\n页面描述：FasiumAI is the leading AI fashion design platform offering real-time trend observation, inspiration curation, and one-click high-fidelity design generation, helping brands cut design cycles by 70%.\n页面解析质量：正文 4588 字，产品线索 83 个\n页面核心线索：FasiumAI - AI-Powered Fashion Design Platform | AI 驱动的时尚设计平台 FasiumAI JOTO 旗下产品 产品介绍 核心功能 应用场景 定价 博客 联系我们 EN 登录 立即注册 AI 驱动的时尚设计平台 灵感在屏幕上发生 成衣在面料上落地 Dream on screen. / FasiumAI 是专为服装品牌和设计团队打造的 AI 设计平台 / 将趋势洞察、灵感筛选、花型生成、版型预览、Tech Pack 输出整合在一个系统中，让设计师回归创造本身 / 预约演示 申请试用 问题所在 服装设计，不该这么慢 传统设计流程中，设计团队把 70% 的时间花在工具切换、素材整理和反复修改上 / 设计主管的困境 靠经验，推未来 趋势数据散落在十几个平台，缺少统一视角 从趋势分析到方向确认，动辄数周反复讨论 经验判断无法量化市场潜力，选款命中率低 最终结果：慢、累、不确定 设计师的困境 被工具拖慢 趋势调研、设计执行、版单输出分属不同工具，流程割裂 一个花型要手动做几十个变体，耗时且机械 设计稿、面料信息、工艺要求散落在不同文件和群聊里 最终结果：时间不在设计上，在搬砖上 工作流程 从观察到选择，只需几步 FasiumAI 将服装 / 03 爆款生成 一键输出 选定方向后，AI 即刻生成完整设计方案 / 不是模糊的概念图，而是可以直接进入打样流程的高保真设计稿 / 核心功能 全链路秒级落地 从素材提取到版单生成，效率提升 100 倍+ 用自然语言驱动设计 AI助手提示设计 无需学习复杂的 prompt 写法，用设计师日常的专业语言直接和 AI 对话\n页面可读文本片段：FasiumAI - AI-Powered Fashion Design Platform | AI 驱动的时尚设计平台 FasiumAI JOTO 旗下产品 产品介绍 核心功能 应用场景 定价 博客 联系我们 EN 登录 立即注册 AI 驱动的时尚设计平台 灵感在屏幕上发生 成衣在面料上落地 Dream on screen. Land on fabric. FasiumAI 是专为服装品牌和设计团队打造的 AI 设计平台。将趋势洞察、灵感筛选、花型生成、版型预览、Tech Pack 输出整合在一个系统中，让设计师回归创造本身。 预约演示 申请试用 问题所在 服装设计，不该这么慢 传统设计流程中，设计团队把 70% 的时间花在工具切换、素材整理和反复修改上。真正用于设计的时间，少得可怜。 设计主管的困境 靠经验，推未来 趋势数据散落在十几个平台，缺少统一视角 从趋势分析到方向确认，动辄数周反复讨论 经验判断无法量化市场潜力，选款命中率低 最终结果：慢、累、不确定 设计师的困境 被工具拖慢 趋势调研、设计执行、版单输出分属不同工具，流程割裂 一个花型要手动做几十个变体，耗时且机械 设计稿、面料信息、工艺要求散落在不同文件和群聊里 最终结果：时间不在设计上，在搬砖上 工作流程 从观察到选择，只需几步 FasiumAI 将服装设计全流程浓缩为三步：观察趋势、筛选灵感、一键生成。从发现趋势到拿到可下单的设计方案，只要几分钟。 01 趋势观察 实时趋势池 FasiumAI 的趋势引擎持续抓取全球时尚信号——秀场、街拍、社交媒体、电商热销数据——自动归类并呈现为可交互的趋势看板。 02 灵感筛选 风格 · 品类 · 版型 通过智能标签和多维过滤，按风格、品类、版型、面料质感精准筛选，找到最匹配品牌调性的灵感方向。 03 爆款生成 一键输出 选定方向后，AI 即刻生成完整设计方案。不是模糊的概念图，而是可以直接进入打样流程的高保真设计稿。 核心功能 全链路秒级落地 从素材提取到版单生成，效率提升 100 倍+ 用自然语言驱动设计 AI助手提示设计 无需学习复杂的 prompt 写法，用设计师日常的专业语言直接和 AI 对话。FasiumAI 内置服装行业知识，能准确理解\"泡泡袖碎花连衣裙\"、\"工装风拼接设计\"等专业描述，即刻转化为可执行的设计方案。 内置服装行业设计语言库 支持中英文混合描述输入 实时预览 AI 理解效果，随时调整 一个灵感，无限可能 快速衍生设计 上传任意参考图，AI 自动生成数十种风格衍生方案。调整廓形、换色系、改图案密度，几秒钟内完成设计师过去需要一整天的变体工作，极大拓展创意边界。 单一设计一键裂变 20+ 变体 支持色彩、廓形、图案多维调整 保持品牌风格一致性 所想即所见的设计空间 直观地感受你的画板 交互式设计画板让你实时拖拽、组合、预览所有设计元素。花型、面料、配色、版型在同一个画布上自由组合，直观感受最终成衣效果，告别在不同文件和工具间反复切换的割裂感。 花型 + 面料 + 版型实时组合预览 拖拽操作，直觉化使用体验 一键保存灵感方案 下单前看到真实成衣 快速试穿你的服装 将设计方案实时渲染到虚拟模特上，多角度查看成衣效果。无需打样、无需等待，在屏幕上就能看到设计落在真实比例人台上的样子，大幅减少试错打样成本。 花型 + 版型实时渲染到模特 支持多角度旋转查看 一键切换面料质感和光影效果 一键生成标准技术款式图 快速获得你的三视图 从设计概念图自动生成正面、背面、侧面的标准技术款式图，符合行业规范，可直接用于 Tech Pack 制作和工厂沟通，省去手动绘制的繁琐工时。 自动生成正面/背面/侧面三视图 符合服装行业标准线稿规范 可直接导入 Tech Pack 使用 参考一款，获得一系列 快速获得近似风格的条纹设计 上传参考条纹或图案设计，AI 自动分析其风格基因，生成一系列近似风格的变体设计。无论是经典条纹、几何图案还是抽象纹理，都能快速产出与原设计调性一致的系列化方案。 智能解析参考图案的风格特征 生成风格一致的系列化图案 支持密度、比例、色彩方向调整 设计稿直出营销物料 快速生成广告图 将产品设计图一键转化为专业级广告宣传图。自动合成多种场景背景、调整光影效果，无需另请摄影或修图，从设计完成到投放素材，几秒搞定。 产品图 + 场景背景智能合成 支持多种广告尺寸一键导出 自动优化光影和色彩表现 确认设计，自动出版单 即刻获得服装打版单 设计方案确认后，系统自动生成完整的标准 Tech Pack，涵盖三视图、线稿标注、配色参数、材料清单等所有生产所需信息，直接发送工厂即可开工，将版单制作从数小时压缩到几分钟。 自动汇总所有设计参数与材料规格 生成符合行业标准的 Tech Pack 支持导出 PDF / Excel 通用格式 技术优势 真正的优势，是系统 市面上的 AI 图片生成工具很多，但能真正落地到服装行业的，需要的不仅是图片能力，而是一套完整的系统。 Prompt 工程 设计语言内化 将服装设计的专业语言深度编码进 AI 系统。用设计师自己的语言就能驱动 AI。 私有微调 品牌风格一致性 通过品牌历史数据的私有化微调，AI 学会你的品牌 DNA。每个设计都带有品牌独有的风格烙印。 动态知识库 趋势 · 版型 · 工艺 知识库持续更新全球趋势数据、版型规范、面料工艺标准，确保每次生成都基于最新的行业信息。 闭环系统 一个平台搞定全部 从趋势洞察到版单输出，不需要在多个工具间切换。一个平台、一个流程、一套数据。 知识引擎 让 AI 真正懂服装 通用 AI 能画好看的图，但不懂版型、工艺和行业规范。FasiumAI 不同——我们让 AI 真正理解服装。 01 统一解析 无论输入的是秀场图、面料照片、手绘草稿还是文字描述，FasiumAI 都能统一理解其中的设计意图。不同格式的资料，一种理解方式。 02 精准调用 AI 不会胡乱生成，而是基于知识库中的版型规范、工艺约束、品牌偏好做出合理的设计决策——不乱用，不误用。 03 知识驱动 每一条趋势数据、每一个版型规范、每一段工艺说明，都直接用于驱动设计生成和版单输出，真正做到知识即生产力。 应用场景 谁在用 FasiumAI? 快时尚品牌 快速响应市场 每周上新的节奏下，FasiumAI 帮助快时尚品牌在几小时内完成从趋势捕捉到设计出稿的全流程，抢在竞品之前上架。 独立设计师品牌 小团队大产出 一个设计师 + FasiumAI，就能完成过去需要 5 人团队才能实现的产出。AI 处理重复性工作，设计师专注于创意方向把控。 代工厂 / ODM 提升提案能力 面对客户的模糊需求描述，FasiumAI 可以快速生成多套设计方案供客户选择，附带完整 Tech Pack，大幅提升提案效率和成单率。 电商服装卖家 数据驱动选款 结合电商平台热销数据和社交媒体趋势，FasiumAI 帮助电商卖家做出更有据可依的选款决策，降低库存风险，提高爆款命中率。 方案对比 传统流程 vs FasiumAI 环节 传统方式 FasiumAI 趋势调研 手动翻阅报告，1-2 周 AI 实时趋势池，分钟级 灵感收集 多平台来回切换 一站式智能筛选 花型设计 PS/AI 手动绘制，数小时 秒级提取 + 一键裂变 成衣预览 等打样，1-2 周 虚拟模特即时渲染 Tech Pack 手工填写 Excel，数小时 自动生成，分钟级 单季产出 ~80 款 400+ 款 选款命中率 凭经验判断 数据+AI 辅助决策 点数充值 定价 点数永久有效，支付成功自动到账。为您的 AI 服装设计工作流提供持续动力——从花型生成到 Tech Pack 输出。 Starter 1,000 PTS ¥ 9.9 永久有效 支付成功后自动到账 约可生成 10 张图 / 2 段视频 指定改款 版单生成 三视图生成 创意衍生 服装上身 立即购买 → Growth 11,368 PTS ¥ 98 永久有效 支付成功后自动到账 约可生成 113 张图 / 22 段视频 指定改款 版单生成 三视图生成 创意衍生 服装上身 立即购买 → Pro 71,760 PTS ¥ 598 永久有效 支付成功后自动到账 约可生成 717 张图 / 143 段视频 指定改款 版单生成 三视图生成 创意衍生 服装上身 立即购买 → 企业版定制 定制方案 对于需要组织范围内的安全性、合规性、可扩展性、控制和更高级功能的企业 私有化部署 企业级 SaaS 服务 SSO 专业技术支持 定制开发 所有功能权限开放 联系我们 → FAQ 常见问题 FasiumAI 适合什么规模的团队？ FasiumAI 适合各种规模的服装设计团队。无论是需要快速响应市场的快时尚品牌，还是追求小团队大产出的独立设计师品牌，或者是需要提升提案能力的代工厂/ODM，都能从中受益。 AI 生成的设计会和别人撞款吗？ 不会。FasiumAI 支持私有化微调，通过学习您的品牌历史数据，AI 会掌握您品牌的独特 DNA，生成符合您品牌风格的专属设计。 需要学习 prompt 吗？ 不需要。我们将服装设计的专业语言深度编码进 AI 系统，您只需要用设计师日常使用的语言即可驱动 AI，无需学习复杂的 prompt 工程。 生成的 Tech Pack 可以直接给工厂用吗？ 可以。系统自动生成的 Tech Pack 包含花型文件、配色参数、版型尺寸、工艺说明等全部生产所需信息，格式标准，可直接对接工厂生产。 支持哪些品类？ 目前支持女装、男装、童装等主流服装品类，涵盖 T恤、卫衣、连衣裙、外套等常见款式。知识库还在持续更新中。 数据安全怎么保障？ 我们采用企业级加密技术保护您的数据安全。您的私有数据仅用于您自己账号的模型微调，绝不会用于训练公共模型或泄露给第三方。 联系我们 开启企业级 AI 时尚新时代 FasiumAI 致力于为服装企业提供最前沿的 AI 设计解决方案。无论您是独立设计师还是大型服装集团，我们的专家团队都将为您提供全方位的技术支持。 微信咨询 扫描二维码 / 添加安全专家一对一沟通 致电我们 +86 (021) 6566 1628 发送邮件 jotoai@jototech.cn 填写需求单 收到您的信息后，我们将在 1 个工作日内与您取得联系。 姓名 * 企业名称 * 邮箱 * 电话 * 需求描述 * 验证码 * ···· 提交申请 准备好让设计提速 500% 了吗？ 加入已经在用 FasiumAI 的品牌和设计团队。从今天开始，把时间还给创造。 预约演示 申请试用 联系我们 Dream the trend. Land the collection. FasiumAI JOTO 旗下产品 AI 驱动的服装设计平台 产品目录 核心功能 应用场景 博客 隐私政策 关于我们 关于 JOTO.AI 合作伙伴 加入我们 联系我们 上海聚托信息科技有限公司©2026 沪ICP备15056478号-5 Dream the trend. Land the collection.",
+        "pdfNotes": "Fasium 使用手册v2(1).pdf 未能读取出稳定文本,请手动补充 PDF 重点。"
+      },
+      "website": "https://fasium.jotoai.com/",
+      "updatedAt": "2026-06-18T03:18:33.419Z",
+      "imageAssets": [],
+      "sourceMediaAssets": [],
+      "understanding": {
+        "definition": "FasiumAI 是专为服装品牌和设计团队打造的 AI 设计平台",
+        "coreFunctions": [
+          {
+            "text": "趋势观察",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "灵感筛选",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "花型生成",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "版型预览",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "Tech Pack",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "三视图生成",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "自然语言驱动设计",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "快速衍生设计",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          }
+        ],
+        "targetCustomers": [
+          {
+            "text": "服装品牌",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "设计团队",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "设计主管",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "设计师",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "快时尚品牌",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "独立设计师品牌",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          }
+        ],
+        "painPoints": [
+          {
+            "text": "传统流程推进慢,从调研到确认需要较长周期",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "工作分散在多个工具里,切换和整理成本高",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "方案确认需要多轮反复讨论和修改",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "依赖经验判断,结果不确定且难量化",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "大量重复操作需要人工手动完成",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "资料散落在文件和沟通渠道中,交付信息不集中",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "依赖线下打样或等待反馈,试错成本较高",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "选款缺少数据支撑时容易带来库存风险",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          }
+        ],
+        "traditionalAlternatives": [
+          {
+            "text": "传统人工设计流程",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "多个平台和工具来回切换",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "用 PS、AI 等设计软件手动绘制和改稿",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "用 Excel 或文档手工整理版单和交付信息",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "依赖外包摄影、修图或人工制作营销物料",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "靠经验做趋势判断和选款决策",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          }
+        ],
+        "afterUseChanges": [
+          {
+            "text": "从趋势观察、灵感筛选到方案生成可以集中在同一流程里完成",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "设计确认后可以整理为更适合交付工厂的 Tech Pack 或版单资料",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "设计在打样前可以先通过预览或虚拟试穿降低试错成本",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "概念图可以进一步转成正面、背面、侧面的技术款式图",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "设计稿可以继续生成广告图等营销物料",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "生成过程可以受行业知识、版型规范或品牌偏好约束",
+            "confidence": "explicit",
+            "basis": "官网资料、PDF资料"
+          },
+          {
+            "text": "只能写产品描述可合理支持的定性变化,不得写具体数据",
+            "confidence": "inferred",
+            "basis": "产品资料不足"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「趋势观察」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「灵感筛选」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「花型生成」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「版型预览」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「Tech Pack」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「三视图生成」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「自然语言驱动设计」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、PDF资料",
+            "text": "资料明确出现「快速衍生设计」。"
+          },
+          {
+            "sourceType": "product",
+            "sourceLabel": "产品简介",
+            "text": "FasiumAI is the leading AI fashion design platform offering real-time trend observation, inspiration curation, and one-click high-fidelity design generation, helping brands cut design cycles by 70%."
+          }
+        ],
+        "writingBoundaries": [
+          "未提供真实客户资料,不得写客户名称或客户案例。",
+          "未提供可核验效果数据,不得写百分比、金额、客户数量或节省时间。",
+          "未提供真实截图流程,不得写按钮名称、后台路径或具体点击步骤。",
+          "官网/PDF没有明确写到的功能,只能作为推测,不能写成确定事实。",
+          "未提供真实客户资料,不得写客户名称或客户案例。",
+          "未提供效果数据,不得写百分比、金额、节省时间或客户数量。",
+          "未提供真实流程或截图说明,不得写按钮名称、后台路径或具体点击步骤。",
+          "未提供金融客户资料,不得写银行、券商、保险等金融客户正在使用。"
+        ],
+        "questionsToAsk": [
+          "是否有真实客户案例或行业客户可以写?无",
+          "哪些功能已经上线,哪些仍是演示或规划?无",
+          "有没有可公开引用的效果数据或交付指标?无",
+          "最希望文章强调的目标客户是哪一类?企业b端"
+        ],
+        "generatedAt": "2026-06-17T01:50:11.811Z",
+        "source": "manual"
+      }
+    },
+    "prod-local-mpewry7u": {
+      "id": "prod-local-mpewry7u",
+      "name": "法老-智能运维",
+      "description": "Pharaoh Command 是 JOTO.AI 旗下 AI 驱动的 NetOps 平台,通过自然语言对话完成网络设备配置、故障诊断、拓扑分析与运维自动化。面向企业 IT、网络工程师与 SRE 团队。",
+      "tags": [],
+      "iconGradient": [
+        "#1268FF",
+        "#5B8CFF"
+      ],
+      "knowledgeDocs": [],
+      "sourcePack": {
+        "productNotes": "",
+        "competitorNotes": "",
+        "trendNotes": "",
+        "imageRefs": "",
+        "websiteNotes": "官网链接：https://command.jotoai.com/\n页面标题：Pharaoh Command - AI 驱动的 NetOps 网络运维平台 | JOTO.AI\n页面描述：Pharaoh Command 是 JOTO.AI 旗下 AI 驱动的 NetOps 平台,通过自然语言对话完成网络设备配置、故障诊断、拓扑分析与运维自动化。面向企业 IT、网络工程师与 SRE 团队。\n页面解析质量：正文少,但解析到较完整 metadata,可读素材 491 字，产品线索 70 个\n页面核心线索：Pharaoh Command - AI 驱动的 NetOps 网络运维平台 | JOTO.AI Pharaoh Command - AI 驱动的 NetOps 网络运维平台 | JOTO.AI Pharaoh Command 是 JOTO.AI 旗下 AI 驱动的 NetOps 平台,通过自然语言对话完成网络设备配置、故障诊断、拓扑分析与运维自动化 / 面向企业 IT、网络工程师与 SRE 团队 / 用自然语言对话完成网络运维 — 配置、诊断、拓扑、自动化 / 用自然语言对话完成网络运维 / AI网络运维,NetOps平台,网络自动化,AI运维,网络故障诊断,自然语言运维,IT运维工具,网络管理平台,Pharaoh Command,JOTO.AI Pharaoh Command BusinessApplication Web AI 驱动的 NetOps 网络运维平台,通过自然语言完成配置、诊断、拓扑分析与运维自动化 / https://command.jotoai.com/ CNY JOTO.AI https://jotoai.com\n页面可读文本片段：Pharaoh Command - AI 驱动的 NetOps 网络运维平台 | JOTO.AI Pharaoh Command - AI 驱动的 NetOps 网络运维平台 | JOTO.AI Pharaoh Command 是 JOTO.AI 旗下 AI 驱动的 NetOps 平台,通过自然语言对话完成网络设备配置、故障诊断、拓扑分析与运维自动化。面向企业 IT、网络工程师与 SRE 团队。 用自然语言对话完成网络运维 — 配置、诊断、拓扑、自动化。JOTO.AI 出品。 用自然语言对话完成网络运维。JOTO.AI 出品。 AI网络运维,NetOps平台,网络自动化,AI运维,网络故障诊断,自然语言运维,IT运维工具,网络管理平台,Pharaoh Command,JOTO.AI Pharaoh Command BusinessApplication Web AI 驱动的 NetOps 网络运维平台,通过自然语言完成配置、诊断、拓扑分析与运维自动化。 https://command.jotoai.com/ CNY JOTO.AI https://jotoai.com",
+        "pdfNotes": ""
+      },
+      "website": "https://command.jotoai.com/",
+      "updatedAt": "2026-06-17T03:07:07.829Z",
+      "imageAssets": [],
+      "sourceMediaAssets": [],
+      "understanding": {
+        "definition": "法老-智能运维：面向企业 IT、网络工程师与 SRE 团队",
+        "coreFunctions": [
+          {
+            "text": "Pharaoh Command 是 JOTO.AI 旗下 AI 驱动的 NetOps 平台",
+            "confidence": "explicit",
+            "basis": "产品简介"
+          },
+          {
+            "text": "通过自然语言对话完成网络设备配置",
+            "confidence": "explicit",
+            "basis": "产品简介"
+          },
+          {
+            "text": "故障诊断",
+            "confidence": "explicit",
+            "basis": "产品简介"
+          },
+          {
+            "text": "拓扑分析与运维自动化",
+            "confidence": "explicit",
+            "basis": "产品简介"
+          }
+        ],
+        "targetCustomers": [
+          {
+            "text": "网络工程师",
+            "confidence": "explicit",
+            "basis": "官网资料"
+          },
+          {
+            "text": "SRE 团队",
+            "confidence": "explicit",
+            "basis": "官网资料"
+          },
+          {
+            "text": "需要用户补充目标客户或目标角色",
+            "confidence": "inferred",
+            "basis": "产品资料不足"
+          }
+        ],
+        "painPoints": [
+          {
+            "text": "需要进一步确认用户在真实工作中的具体麻烦",
+            "confidence": "inferred",
+            "basis": "产品资料不足"
+          }
+        ],
+        "traditionalAlternatives": [
+          {
+            "text": "需要进一步确认传统做法或替代方案",
+            "confidence": "inferred",
+            "basis": "产品资料不足"
+          }
+        ],
+        "afterUseChanges": [
+          {
+            "text": "重复操作可以交给自动化能力或 Agent 处理",
+            "confidence": "explicit",
+            "basis": "官网资料"
+          },
+          {
+            "text": "只能写产品描述可合理支持的定性变化,不得写具体数据",
+            "confidence": "inferred",
+            "basis": "产品资料不足"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceType": "product",
+            "sourceLabel": "产品简介",
+            "text": "Pharaoh Command 是 JOTO.AI 旗下 AI 驱动的 NetOps 平台,通过自然语言对话完成网络设备配置、故障诊断、拓扑分析与运维自动化。面向企业 IT、网络工程师与 SRE 团队。"
+          }
+        ],
+        "writingBoundaries": [
+          "未提供真实客户资料,不得写客户名称或客户案例。",
+          "未提供可核验效果数据,不得写百分比、金额、客户数量或节省时间。",
+          "未提供真实截图流程,不得写按钮名称、后台路径或具体点击步骤。",
+          "官网/PDF没有明确写到的功能,只能作为推测,不能写成确定事实。",
+          "未提供真实客户资料,不得写客户名称或客户案例。",
+          "未提供效果数据,不得写百分比、金额、节省时间或客户数量。",
+          "未提供真实流程或截图说明,不得写按钮名称、后台路径或具体点击步骤。",
+          "未提供金融客户资料,不得写银行、券商、保险等金融客户正在使用。"
+        ],
+        "questionsToAsk": [
+          "是否有真实客户案例或行业客户可以写?无",
+          "哪些功能已经上线,哪些仍是演示或规划?无",
+          "有没有可公开引用的效果数据或交付指标?无",
+          "最希望文章强调的目标客户是哪一类?B端企业"
+        ],
+        "generatedAt": "2026-06-17T03:06:31.257Z",
+        "source": "manual"
+      }
+    },
+    "prod-local-mpkjmg2m": {
+      "id": "prod-local-mpkjmg2m",
+      "name": "竞品分析助手",
+      "description": "",
+      "tags": [],
+      "iconGradient": [
+        "#1268FF",
+        "#5B8CFF"
+      ],
+      "knowledgeDocs": [],
+      "imageAssets": [],
+      "sourceMediaAssets": [
+        {
+          "id": "media-mpkjngbh-bks5z0",
+          "url": "/uploads/product-evidence/prod-local-mpkjmg2m/mpkjngbf-粘贴网页截图-2026-05-25-01-44-58.png",
+          "fileName": "粘贴网页截图-2026-05-25-01-44-58.png",
+          "fileType": "image",
+          "sizeKb": 194,
+          "caption": "粘贴网页截图-2026-05-25-01-44-58",
+          "uploadedAt": "2026-05-25T01:44:58.973Z",
+          "analysis": "这是一个产品评论分析页面，用于追踪和分析客户反馈。页面显示了187条评论总数、4个产品数、2家店铺数和17个点赞数，并通过图表展示了各类别表现，如正面标签、期望功能、负面标签和紧急问题。该页面主要面向产品经理或市场人员，帮助他们了解客户情绪倾向，持续优化产品表现。后续文章可强调如何利用这些数据进行产品改进和用户体验提升。"
+        },
+        {
+          "id": "media-mpkjnqpz-8r7z90",
+          "url": "/uploads/product-evidence/prod-local-mpkjmg2m/mpkjnqpw-粘贴网页截图-2026-05-25-01-45-12.png",
+          "fileName": "粘贴网页截图-2026-05-25-01-45-12.png",
+          "fileType": "image",
+          "sizeKb": 325,
+          "caption": "粘贴网页截图-2026-05-25-01-45-12",
+          "uploadedAt": "2026-05-25T01:45:12.455Z",
+          "analysis": "这是一个产品反馈分析页面，用于展示用户对产品的评论和互动数据。页面左侧的图表显示了不同类别的用户反馈及其互动量，右侧则展示了最新的用户评论。该页面主要面向产品经理或市场分析人员，帮助他们了解用户对产品的具体需求和改进建议。通过分析这些数据，可以解决产品改进和优化的问题，后续文章可强调如何根据用户反馈进行产品迭代，提升用户体验。"
+        },
+        {
+          "id": "media-mpkjojwo-40zbvq",
+          "url": "/uploads/product-evidence/prod-local-mpkjmg2m/mpkjojwj-粘贴网页截图-2026-05-25-01-45-50.png",
+          "fileName": "粘贴网页截图-2026-05-25-01-45-50.png",
+          "fileType": "image",
+          "sizeKb": 467,
+          "caption": "粘贴网页截图-2026-05-25-01-45-50",
+          "uploadedAt": "2026-05-25T01:45:50.280Z",
+          "analysis": "这是一个产品反馈分析页面，用于收集和展示用户对产品的使用体验和建议。页面左侧列出了不同类别的用户反馈指标，如包装规格改进、气味与留香优化、清洁去污更强等，每个类别下有具体的评论和互动量。右侧显示了用户的详细评价，包括正面标签、使用体验和具体反馈。\n\n该页面主要面向产品经理和市场团队，帮助他们了解用户需求和产品改进方向。通过分析这些反馈，可以解决产品设计和功能上的不足，提升用户体验。后续文章可以强调数据驱动的产品优化策略，展示如何根据用户反馈进行迭代改进，以及如何通过用户满意度提升品牌忠诚度。"
+        },
+        {
+          "id": "media-mpkjove0-vl5cz7",
+          "url": "/uploads/product-evidence/prod-local-mpkjmg2m/mpkjovdy-粘贴网页截图-2026-05-25-01-46-04.png",
+          "fileName": "粘贴网页截图-2026-05-25-01-46-04.png",
+          "fileType": "image",
+          "sizeKb": 373,
+          "caption": "粘贴网页截图-2026-05-25-01-46-04",
+          "uploadedAt": "2026-05-25T01:46:05.160Z",
+          "analysis": "该页面为产品评论分析工具，用于展示和分析用户反馈数据。页面显示了某款儿童泡沫洗发水的负面评价统计，包括过敏或健康风险、使用后不适和气味不喜欢等具体问题及其占比。此工具面向商家或产品经理，帮助他们快速识别产品存在的主要问题，如刺激性成分、头皮不适和异味等。通过详细的数据和用户评论，商家可以针对性改进产品配方和服务流程，提升用户体验。后续文章可强调该工具在快速定位产品问题、优化产品设计和增强客户满意度方面的实用价值。"
+        }
+      ],
+      "sourcePack": {
+        "productNotes": "",
+        "competitorNotes": "",
+        "trendNotes": "",
+        "imageRefs": "",
+        "websiteNotes": "",
+        "pdfNotes": "",
+        "mediaNotes": "截图素材：粘贴网页截图-2026-05-25-01-44-21\n系统理解：这是一个产品评论分析页面，用于展示和分析用户对某款儿童泡沫洗发水的反馈。页面显示了不同类型的负面评价及其占比，如过敏或健康风险、使用后不适和气味不喜欢等。这些信息帮助商家了解产品的潜在问题，优化产品设计和改进客户服务。后续文章可以强调通过数据分析发现的问题，提出改进建议，并展示商家如何响应用户反馈，提升产品质量和用户体验。\n\n截图素材：粘贴网页截图-2026-05-25-01-44-58\n系统理解：这是一个产品评论分析页面，用于追踪和分析客户反馈。页面显示了187条评论总数、4个产品数、2家店铺数和17个点赞数，并通过图表展示了各类别表现，如正面标签、期望功能、负面标签和紧急问题。该页面主要面向产品经理或市场人员，帮助他们了解客户情绪倾向，持续优化产品表现。后续文章可强调如何利用这些数据进行产品改进和用户体验提升。\n\n截图素材：粘贴网页截图-2026-05-25-01-45-12\n系统理解：这是一个产品反馈分析页面，用于展示用户对产品的评论和互动数据。页面左侧的图表显示了不同类别的用户反馈及其互动量，右侧则展示了最新的用户评论。该页面主要面向产品经理或市场分析人员，帮助他们了解用户对产品的具体需求和改进建议。通过分析这些数据，可以解决产品改进和优化的问题，后续文章可强调如何根据用户反馈进行产品迭代，提升用户体验。\n\n截图素材：粘贴网页截图-2026-05-25-01-45-50\n系统理解：这是一个产品反馈分析页面，用于收集和展示用户对产品的使用体验和建议。页面左侧列出了不同类别的用户反馈指标，如包装规格改进、气味与留香优化、清洁去污更强等，每个类别下有具体的评论和互动量。右侧显示了用户的详细评价，包括正面标签、使用体验和具体反馈。\n\n该页面主要面向产品经理和市场团队，帮助他们了解用户需求和产品改进方向。通过分析这些反馈，可以解决产品设计和功能上的不足，提升用户体验。后续文章可以强调数据驱动的产品优化策略，展示如何根据用户反馈进行迭代改进，以及如何通过用户满意度提升品牌忠诚度。\n\n截图素材：粘贴网页截图-2026-05-25-01-46-04\n系统理解：该页面为产品评论分析工具，用于展示和分析用户反馈数据。页面显示了某款儿童泡沫洗发水的负面评价统计，包括过敏或健康风险、使用后不适和气味不喜欢等具体问题及其占比。此工具面向商家或产品经理，帮助他们快速识别产品存在的主要问题，如刺激性成分、头皮不适和异味等。通过详细的数据和用户评论，商家可以针对性改进产品配方和服务流程，提升用户体验。后续文章可强调该工具在快速定位产品问题、优化产品设计和增强客户满意度方面的实用价值。\n\n视频素材：竞品分析助手纯录制\n系统理解：已上传视频「竞品分析助手纯录制」。当前会把它作为产品理解素材保存；建议补充 1-2 句：视频里展示了哪个流程、谁在用、解决了什么问题。"
+      },
+      "updatedAt": "2026-06-18T03:33:37.247Z",
+      "understanding": {
+        "definition": "竞品分析助手是一个客户反馈分析工具，面向产品经理和市场分析人员，自动聚合用户评论，通过情感分类和标签提取，识别正面标签、期望功能、负面标签和紧急问题，输出可视化图表和问题占比报告，帮助快速定位产品改进方向。",
+        "coreFunctions": [
+          {
+            "text": "自动抓取并聚合多平台用户评论，形成统一的反馈数据池",
+            "confidence": "inferred",
+            "basis": "截图显示评论总数、产品数、店铺数，推断支持多源数据接入"
+          },
+          {
+            "text": "情感与标签分类：将评论自动归入正面标签、期望功能、负面标签、紧急问题等类别",
+            "confidence": "explicit",
+            "basis": "截图系统理解明确提及各类别表现，包括正面标签、期望功能、负面标签和紧急问题"
+          },
+          {
+            "text": "负面评价专项分析：展示负面评价的具体问题（如过敏风险、使用不适）及占比",
+            "confidence": "explicit",
+            "basis": "截图素材及系统理解指出负面评价统计包括具体问题及占比"
+          },
+          {
+            "text": "反馈类别量化评估：展示各类用户反馈的互动量（如点赞数）和评论数量",
+            "confidence": "explicit",
+            "basis": "截图系统理解描述左侧图表展示反馈类别及其互动量"
+          },
+          {
+            "text": "最新评论实时展示：在页面右侧显示最新的用户详细评价，含使用体验和具体反馈",
+            "confidence": "explicit",
+            "basis": "截图素材描述右侧展示了最新的用户评论"
+          },
+          {
+            "text": "问题优先级标识：标记紧急问题，辅助团队优先处理高优缺陷",
+            "confidence": "inferred",
+            "basis": "截图提到紧急问题类别，推断可标识优先级"
+          }
+        ],
+        "targetCustomers": [
+          {
+            "text": "产品经理",
+            "confidence": "explicit",
+            "basis": "截图系统理解多次提及产品经理为主要用户"
+          },
+          {
+            "text": "市场分析人员",
+            "confidence": "explicit",
+            "basis": "截图系统理解提及市场人员或市场分析人员"
+          },
+          {
+            "text": "商家/品牌运营者",
+            "confidence": "explicit",
+            "basis": "截图描述提到商家可针对性改进产品配方和服务流程"
+          },
+          {
+            "text": "客户体验团队",
+            "confidence": "inferred",
+            "basis": "基于产品关注客户反馈优化，推断客服或体验团队也可能使用"
+          },
+          {
+            "text": "研发/配方设计师",
+            "confidence": "inferred",
+            "basis": "基于分析结果可能指导配方调整，推断研发角色参与"
+          }
+        ],
+        "painPoints": [
+          {
+            "text": "用户反馈分散在多个电商平台，人工收集耗时且易遗漏",
+            "confidence": "inferred",
+            "basis": "传统做法常用手工整理，基于工具聚合需求推断"
+          },
+          {
+            "text": "手动阅读大量评论难以快速归类情绪和紧急程度，问题识别滞后",
+            "confidence": "inferred",
+            "basis": "传统做法靠人工标注，基于工具自动分类优势推断"
+          },
+          {
+            "text": "缺乏数据量化支撑，产品改进需求优先级依赖主观判断",
+            "confidence": "inferred",
+            "basis": "截图显示互动量和占比，体现量化决策需求"
+          },
+          {
+            "text": "竞品表现无从对比，无法得知自身产品在行业中的优势与劣势",
+            "confidence": "inferred",
+            "basis": "产品名为竞品分析助手，但截图未直接体现，保守推断有此痛点"
+          },
+          {
+            "text": "团队协作时反馈信息传递不透明，改进方向难以对齐",
+            "confidence": "inferred",
+            "basis": "基于多角色使用场景推断"
+          }
+        ],
+        "traditionalAlternatives": [
+          {
+            "text": "使用Excel手动复制粘贴评论，人工打标签和制作图表",
+            "confidence": "inferred",
+            "basis": "传统数据分析常用方式"
+          },
+          {
+            "text": "依靠客服或运营人员凭经验总结反馈，口头报告给团队",
+            "confidence": "inferred",
+            "basis": "常见非工具化流程"
+          },
+          {
+            "text": "通过电商后台导出原始评论，用脚本进行简单词频统计",
+            "confidence": "inferred",
+            "basis": "技术团队可能采用的低成本方法"
+          },
+          {
+            "text": "使用通用问卷工具收集意见，但无法分析公开评论数据",
+            "confidence": "inferred",
+            "basis": "调研替代方案，但覆盖不全"
+          }
+        ],
+        "afterUseChanges": [
+          {
+            "text": "反馈收集从数小时缩短至分钟级，信息集中在一个面板",
+            "confidence": "inferred",
+            "basis": "自动化聚合带来的典型效率提升"
+          },
+          {
+            "text": "问题分类自动化，紧急情况可第一时间被发现，减少客诉升级风险",
+            "confidence": "inferred",
+            "basis": "基于紧急问题标签和负面分析功能推断"
+          },
+          {
+            "text": "团队对齐速度加快：可视化图表直接驱动改进会议，减少沟通误解",
+            "confidence": "inferred",
+            "basis": "数据可视化辅助沟通的通用效果"
+          },
+          {
+            "text": "产品迭代决策有据可依，减少主观拍板，提升成功率",
+            "confidence": "inferred",
+            "basis": "量化反馈支撑决策"
+          },
+          {
+            "text": "用户满意度提升：针对性解决高频问题，复购率或口碑可能改善",
+            "confidence": "inferred",
+            "basis": "基于反馈闭环的合理推测"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceType": "media",
+            "sourceLabel": "截图素材：粘贴网页截图-2026-05-25-01-44-21",
+            "text": "产品评论分析页面，展示儿童泡沫洗发水负面评价及占比，如过敏或健康风险、使用后不适和气味不喜欢"
+          },
+          {
+            "sourceType": "media",
+            "sourceLabel": "截图素材：粘贴网页截图-2026-05-25-01-44-58",
+            "text": "评论分析页面显示187条评论总数、4个产品数、2家店铺数和17个点赞数，图表展示正面标签、期望功能、负面标签和紧急问题"
+          },
+          {
+            "sourceType": "media",
+            "sourceLabel": "截图素材：粘贴网页截图-2026-05-25-01-45-12",
+            "text": "反馈分析页面左侧图表显示不同类别的用户反馈及互动量，右侧展示最新用户评论"
+          },
+          {
+            "sourceType": "media",
+            "sourceLabel": "截图素材：粘贴网页截图-2026-05-25-01-45-50",
+            "text": "反馈分析页面左侧列出反馈指标如包装规格改进、气味与留香优化，右侧显示用户详细评价"
+          },
+          {
+            "sourceType": "media",
+            "sourceLabel": "截图素材：粘贴网页截图-2026-05-25-01-46-04",
+            "text": "产品评论分析工具，展示负面评价统计包括具体问题及占比，帮助商家快速定位产品问题"
+          },
+          {
+            "sourceType": "media",
+            "sourceLabel": "视频素材：竞品分析助手纯录制",
+            "text": "视频展示了产品操作流程，但未提供具体步骤描述，推断为展示如何分析用户反馈"
+          }
+        ],
+        "writingBoundaries": [
+          "未提供具体客户案例，不得编造任何品牌或商家成功故事",
+          "未提供具体量化数据（如准确率、处理时间），不得使用百分比或绝对数值",
+          "视频内容未详细说明，不得描述具体操作按钮路径或界面细节",
+          "产品名称为“竞品分析助手”但截图仅展示单产品反馈分析，不得断言已支持竞品对比功能",
+          "不得编造未在资料中出现的功能模块（如预警通知、自动回复等）",
+          "不得仅凭一个产品名扩大定位，如声称适用于所有行业或支持全渠道数据"
+        ],
+        "questionsToAsk": [
+          "不支持多源对比？看竞品评论区反馈抓取竞对内容，查缺补漏。",
+          "评论数据接入是通过API、手动上传还是浏览器插件？支持哪些电商平台？目前支持淘宝。",
+          "情感分类和标签提取是使用训练好的模型还是可自定义规则？是训练好的模型",
+          "目前服务的典型客户行业是仅限于快消品还是多领域？有无标杆客户？无",
+          "产品是SaaS独立工具还是嵌入其他系统的模块？定价模式如何？不用管"
+        ],
+        "generatedAt": "2026-06-17T03:12:47.947Z",
+        "source": "manual"
+      }
+    },
+    "prod-local-mqrugk6g": {
+      "id": "prod-local-mqrugk6g",
+      "name": "noteflow",
+      "description": "Noteflow 是 JOTO.AI 旗下隐私优先的 AI 知识管理平台，支持本地部署、文档智能问答、PDF 阅读、AI 笔记整理、思维导图生成与 NotebookLM 替代方案。企业与个人知识工作者的第二大脑。",
+      "tags": [],
+      "iconGradient": [
+        "#1268FF",
+        "#5B8CFF"
+      ],
+      "knowledgeDocs": [],
+      "imageAssets": [],
+      "sourceMediaAssets": [],
+      "sourcePack": {
+        "productNotes": "最重要的几个地方：\n1.团队协作笔记本，可以共享实时会议内容并给出advice\n2.支持本地化部署，是notebooklm企业版，做到企业级的隐私性\n3.自定义上传文件大小，支持pdf、ppt、excel、mp3、word等文件上传格式\n4.团队笔记本可以做到一个公司的人在几个不同的地方，同时参加会议，并且实时给出会议内容提议以及建议",
+        "websiteNotes": "官网链接：https://note.jotoai.com/\n页面标题：Noteflow - 隐私优先的 AI 知识管理平台 | JOTO.AI\n页面描述：Noteflow 是 JOTO.AI 旗下隐私优先的 AI 知识管理平台，支持本地部署、文档智能问答、PDF 阅读、AI 笔记整理、思维导图生成与 NotebookLM 替代方案。企业与个人知识工作者的第二大脑。\n页面解析质量：正文少,但解析到较完整 metadata,可读素材 382 字，产品线索 27 个\n页面核心线索：Noteflow - 隐私优先的 AI 知识管理平台 | JOTO.AI Noteflow - 隐私优先的 AI 知识管理平台 | JOTO.AI Noteflow 是 JOTO.AI 旗下隐私优先的 AI 知识管理平台，支持本地部署、文档智能问答、PDF 阅读、AI 笔记整理、思维导图生成与 NotebookLM 替代方案 / 本地部署、文档智能问答、AI 笔记整理、思维导图生成 / Your private AI second-brain. / AI笔记知识库,NotebookLM替代,AI文档问答,个人知识管理工具,AI播客生成,文档AI摘要,AI思维导图生成,知识库协作共享,PDF智能阅读,Noteflow,JOTO.AI\n页面可读文本片段：Noteflow - 隐私优先的 AI 知识管理平台 | JOTO.AI Noteflow - 隐私优先的 AI 知识管理平台 | JOTO.AI Noteflow 是 JOTO.AI 旗下隐私优先的 AI 知识管理平台，支持本地部署、文档智能问答、PDF 阅读、AI 笔记整理、思维导图生成与 NotebookLM 替代方案。企业与个人知识工作者的第二大脑。 本地部署、文档智能问答、AI 笔记整理、思维导图生成。打造你的第二大脑。 Your private AI second-brain. Document Q&amp;A, PDF reading, mind maps. AI笔记知识库,NotebookLM替代,AI文档问答,个人知识管理工具,AI播客生成,文档AI摘要,AI思维导图生成,知识库协作共享,PDF智能阅读,Noteflow,JOTO.AI",
+        "pdfNotes": "",
+        "mediaNotes": ""
+      },
+      "website": "note.jotoai.com",
+      "understanding": {
+        "definition": "noteflow：本地部署、文档智能问答、AI 笔记整理、思维导图生成",
+        "coreFunctions": [
+          {
+            "text": "本地部署",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "团队协作笔记",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "会议实时录音",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "协作编辑",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "文档智能问答",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "PDF 阅读",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "PDF智能阅读",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "AI 笔记整理",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          }
+        ],
+        "targetCustomers": [
+          {
+            "text": "知识工作者",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "个人知识工作者",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "需要用户补充目标客户或目标角色",
+            "confidence": "inferred",
+            "basis": "产品资料不足"
+          }
+        ],
+        "painPoints": [
+          {
+            "text": "会议信息容易停留在现场或个人记录里,会外同事难以及时获得上下文",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          },
+          {
+            "text": "跨成员协作时建议和反馈需要及时同步,否则容易错过会议现场决策",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          },
+          {
+            "text": "知识资料沉在文档和个人笔记里,团队复用和追溯成本高",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          },
+          {
+            "text": "企业知识资料涉及隐私和权限,不能轻易交给不可控的外部工具处理",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          },
+          {
+            "text": "可以在开会的时候得到ai的建议，并且支持团队协作询问会议上客户的痛点以及可能在意的地方是什么",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          }
+        ],
+        "traditionalAlternatives": [
+          {
+            "text": "用 NotebookLM 等通用知识问答工具替代",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          },
+          {
+            "text": "notebooklm无法团队协作且不支持本地化部署",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          },
+          {
+            "text": "传统情况不支持实时录音，团队编辑",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          },
+          {
+            "text": "需要进一步确认传统做法或替代方案",
+            "confidence": "inferred",
+            "basis": "人工编辑"
+          }
+        ],
+        "afterUseChanges": [
+          {
+            "text": "生成过程可以受行业知识、版型规范或品牌偏好约束",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "文档和 PDF 资料可以通过智能问答快速定位重点",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "笔记和资料可以被整理成更容易复用的结构化知识",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "会议现场信息、建议和反馈可以在团队协作笔记里同步沉淀",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "企业知识资料可以在更可控的部署和权限环境中使用 AI 能力",
+            "confidence": "explicit",
+            "basis": "官网资料、人工补充、人工修订"
+          },
+          {
+            "text": "只能写产品描述可合理支持的定性变化,不得写具体数据",
+            "confidence": "inferred",
+            "basis": "产品资料不足"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「本地部署」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「团队协作笔记」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「会议实时录音」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「协作编辑」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「文档智能问答」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「PDF 阅读」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「PDF智能阅读」。"
+          },
+          {
+            "sourceType": "website",
+            "sourceLabel": "官网资料、人工补充、人工修订",
+            "text": "资料明确出现「AI 笔记整理」。"
+          },
+          {
+            "sourceType": "product",
+            "sourceLabel": "产品简介",
+            "text": "Noteflow 是 JOTO.AI 旗下隐私优先的 AI 知识管理平台，支持本地部署、文档智能问答、PDF 阅读、AI 笔记整理、思维导图生成与 NotebookLM 替代方案。企业与个人知识工作者的第二大脑。"
+          }
+        ],
+        "writingBoundaries": [
+          "未提供真实客户资料,不得写客户名称或客户案例。",
+          "未提供可核验效果数据,不得写百分比、金额、客户数量或节省时间。",
+          "未提供真实截图流程,不得写按钮名称、后台路径或具体点击步骤。",
+          "官网/PDF没有明确写到的功能,只能作为推测,不能写成确定事实。",
+          "未提供真实客户资料,不得写客户名称或客户案例。",
+          "未提供效果数据,不得写百分比、金额、节省时间或客户数量。",
+          "未提供真实流程或截图说明,不得写按钮名称、后台路径或具体点击步骤。",
+          "未提供金融客户资料,不得写银行、券商、保险等金融客户正在使用。"
+        ],
+        "questionsToAsk": [
+          "是否有真实客户案例或行业客户可以写?",
+          "哪些功能已经上线,哪些仍是演示或规划?",
+          "有没有可公开引用的效果数据或交付指标?",
+          "最希望文章强调的目标客户是哪一类?"
+        ],
+        "generatedAt": "2026-06-25T02:55:25.594Z",
+        "source": "manual"
+      },
+      "updatedAt": "2026-06-26T07:24:25.969Z"
+    }
+  }
+}

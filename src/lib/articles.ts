@@ -85,7 +85,7 @@ export const STATUS_META: Record<ArticleStatus, StatusMeta> = {
     label: "草稿",
     dotColor: "bg-slate-400",
     textColor: "text-slate-700",
-    bgColor: "bg-slate-100",
+    bgColor: "bg-[#f5f5f7]",
   },
   pending_review: {
     label: "待审核",
@@ -115,7 +115,7 @@ export const STATUS_META: Record<ArticleStatus, StatusMeta> = {
     label: "已发布",
     dotColor: "bg-emerald-600",
     textColor: "text-emerald-800",
-    bgColor: "bg-emerald-100",
+    bgColor: "bg-emerald-50",
   },
   archived: {
     label: "已归档",

@@ -3,7 +3,14 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import seedArticles from "@/data/articles.json";
-import type { Article, ArticleStage, ArticleStatus } from "@/types";
+import type {
+  Article,
+  ArticleSourceContext,
+  ArticleGenerationMeta,
+  ArticleStage,
+  ArticleStatus,
+  ArticleStoryMeta,
+} from "@/types";
 
 const SEED: readonly Article[] = seedArticles as Article[];
 
@@ -23,6 +30,7 @@ export interface ArticleStoreState {
   upsert: (article: Article) => void;
   patch: (id: string, patch: Partial<Article>) => void;
   setStatus: (id: string, status: ArticleStatus) => void;
+  promoteToDashboardDrafts: (ids: string[]) => number;
   remove: (id: string) => void;
 
   // Lifecycle
@@ -45,11 +53,15 @@ export interface CreateDraftInput {
   createdBy?: string;
   /**
    * Batch ID for grouping articles produced by one generation run.
-   * Pass `stage: "batch"` together so the article is hidden from the
-   * main Dashboard until promoted via humanize.
+   * Pass `stage: "batch"` together so the article stays in the candidate
+   * review flow until the user explicitly promotes/publishes it.
    */
   batchId?: string;
   stage?: ArticleStage;
+  layoutTheme?: Article["layoutTheme"];
+  sourceContext?: ArticleSourceContext;
+  storyMeta?: ArticleStoryMeta;
+  generationMeta?: ArticleGenerationMeta;
 }
 
 function nowIso(): string {
@@ -91,6 +103,12 @@ function blankArticle(input: CreateDraftInput): Article {
     updatedAt: iso,
     batchId: input.batchId,
     stage: input.stage,
+    layoutTheme: input.layoutTheme,
+    sourceContext: input.sourceContext,
+    storyMeta: input.storyMeta,
+    generationMeta: input.generationMeta,
+    humanizeMeta:
+      input.stage === "batch" ? { status: "pending" } : undefined,
   };
 }
 
@@ -174,6 +192,30 @@ export const useArticleStore = create<ArticleStoreState>()(
             },
           };
         }),
+
+      promoteToDashboardDrafts: (ids) => {
+        const idSet = new Set(ids);
+        let promotedCount = 0;
+        const iso = nowIso();
+        set((state) => {
+          const next = { ...state.drafts };
+          for (const id of idSet) {
+            const existing =
+              state.drafts[id] ?? SEED.find((a) => a.id === id);
+            if (!existing) continue;
+            promotedCount += 1;
+            next[id] = {
+              ...existing,
+              stage: "main",
+              status: "draft",
+              layoutTheme: existing.layoutTheme ?? "joto",
+              updatedAt: iso,
+            };
+          }
+          return { drafts: next };
+        });
+        return promotedCount;
+      },
 
       remove: (id) =>
         set((state) => {

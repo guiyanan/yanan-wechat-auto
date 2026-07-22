@@ -20,17 +20,14 @@ export function AiScoreBar({ score, compact = false }: AiScoreBarProps) {
     >
       <span
         className={cn(
-          "inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-          meta.bgColor,
-          meta.textColor
+          "h-2 w-2 flex-shrink-0 rounded-full",
+          meta.barColor
         )}
         aria-hidden="true"
-      >
-        {meta.emoji}
-      </span>
+      />
       <div className="flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className={cn("text-xs font-semibold", meta.textColor)}>
+          <span className={cn("text-xs font-medium", meta.textColor)}>
             {clamped}
           </span>
           {!compact && (

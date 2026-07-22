@@ -20,10 +20,14 @@ export interface BatchJob {
   totalStages: number;
   error?: string;
   articleId?: string;
+  previewHtml?: string;
+  title?: string;
 }
 
 interface BatchGeneratingProgressProps {
   jobs: BatchJob[];
+  selectedKey?: string;
+  onSelect?: (key: string) => void;
 }
 
 const STAGE_LABELS: Record<PipelineStageId, string> = {
@@ -36,6 +40,8 @@ const STAGE_LABELS: Record<PipelineStageId, string> = {
 
 export function BatchGeneratingProgress({
   jobs,
+  selectedKey,
+  onSelect,
 }: BatchGeneratingProgressProps) {
   const doneCount = jobs.filter((j) => j.status === "done").length;
   const failedCount = jobs.filter((j) => j.status === "failed").length;
@@ -58,27 +64,43 @@ export function BatchGeneratingProgress({
 
       <div className="space-y-2">
         {jobs.map((job) => (
-          <JobRow key={job.key} job={job} />
+          <JobRow
+            key={job.key}
+            job={job}
+            selected={selectedKey === job.key}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function JobRow({ job }: { job: BatchJob }) {
+function JobRow({
+  job,
+  selected,
+  onSelect,
+}: {
+  job: BatchJob;
+  selected?: boolean;
+  onSelect?: (key: string) => void;
+}) {
   const progress =
     job.totalStages > 0
       ? Math.round((job.completedStages / job.totalStages) * 100)
       : 0;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => onSelect?.(job.key)}
       className={cn(
-        "rounded-lg border p-3 transition-colors",
+        "w-full rounded-lg border p-3 text-left transition-colors",
         job.status === "done" && "border-emerald-200 bg-emerald-50/50",
         job.status === "failed" && "border-red-200 bg-red-50/50",
         job.status === "running" && "border-blue-200 bg-blue-50/50",
-        job.status === "queued" && "border-slate-200 bg-slate-50/50"
+        job.status === "queued" && "border-slate-200 bg-slate-50/50",
+        selected && "ring-2 ring-blue-500"
       )}
     >
       <div className="flex items-center gap-3">
@@ -126,7 +148,7 @@ function JobRow({ job }: { job: BatchJob }) {
       {job.error && (
         <p className="mt-2 text-xs text-red-600">{job.error}</p>
       )}
-    </div>
+    </button>
   );
 }
 

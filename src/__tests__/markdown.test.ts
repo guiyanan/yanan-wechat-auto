@@ -13,6 +13,11 @@ describe("markdownToHtml · headings", () => {
   it("converts ### to <h3>", () => {
     expect(markdownToHtml("### 子段")).toContain("<h3>子段</h3>");
   });
+  it("normalizes #### and deeper headings to <h3> so raw hashes do not leak", () => {
+    const out = markdownToHtml("#### 给服装品牌和设计团队用的");
+    expect(out).toContain("<h3>给服装品牌和设计团队用的</h3>");
+    expect(out).not.toContain("####");
+  });
   it("converts # to <h1>", () => {
     expect(markdownToHtml("# 主标题")).toContain("<h1>主标题</h1>");
   });
@@ -46,6 +51,12 @@ describe("markdownToHtml · inline emphasis", () => {
     // Unclosed ** in one block stays literal (no greedy match swallowing next block)
     const out = markdownToHtml("第一段 **没闭合\n\n第二段");
     expect(out).not.toContain("<strong>没闭合\n\n第二段</strong>");
+  });
+  it("strips dangling double-star markers so raw markdown does not leak", () => {
+    const out = markdownToHtml("**3分钟，从灵感到可交付文件。\n\n不用再输一遍 15cm”。 **");
+    expect(out).not.toContain("**");
+    expect(out).toContain("3分钟");
+    expect(out).toContain("15cm");
   });
 });
 
@@ -219,6 +230,11 @@ describe("markdownToHtml · inline-heading promotion (Qwen quirk)", () => {
     const out = markdownToHtml("一句话。 ### 子标题");
     expect(out).toContain("<h3>子标题</h3>");
   });
+  it("promotes mid-string #### heading to block-level and normalizes it to h3", () => {
+    const out = markdownToHtml("一句话。 #### 给服装品牌和设计团队用的");
+    expect(out).toContain("<h3>给服装品牌和设计团队用的</h3>");
+    expect(out).not.toContain("#### 给服装品牌和设计团队用的");
+  });
   it("does NOT touch # appearing inside a word (e.g. C#)", () => {
     const out = markdownToHtml("我们用 C# 写代码");
     expect(out).toContain("C# 写代码");
@@ -273,6 +289,15 @@ describe("parseMarkdownBlocks", () => {
     expect(blocks).toHaveLength(2);
     expect(blocks[0].type).toBe("paragraph");
     expect(blocks[1].type).toBe("heading");
+  });
+  it("treats #### headings as heading blocks for structure-preserving humanize", () => {
+    const blocks = parseMarkdownBlocks("正文。 #### 给服装品牌和设计团队用的");
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].type).toBe("paragraph");
+    expect(blocks[1]).toMatchObject({
+      type: "heading",
+      raw: "#### 给服装品牌和设计团队用的",
+    });
   });
   it("preserves raw markdown content per block (lossless)", () => {
     const blocks = parseMarkdownBlocks("## 标题");

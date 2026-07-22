@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // Disable strict-mode double-invoke of effects. Our /wizard/generating
   // page kicks off a long-running LLM pipeline in useEffect; letting
   // strict mode cancel-and-restart burns tokens and leaks draft articles.
